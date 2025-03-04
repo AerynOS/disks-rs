@@ -30,7 +30,7 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     }
 
     // Create a partition for rootfs
-    create-partition disk="root_disk" id="root" {
+    create-partition disk="root_disk" id="root" role="root" {
         constraints {
             min (GIB)30
             max (GIB)120
