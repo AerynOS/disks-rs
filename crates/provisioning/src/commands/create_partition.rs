@@ -58,6 +58,14 @@ pub(crate) fn parse(context: Context<'_>) -> Result<super::Command, crate::Error
         }
     }
 
+    if matches!(constraints, Constraints::Invalid) {
+        return Err(crate::InvalidArguments {
+            at: context.node.span(),
+            advice: Some("create-partition [disk=<disk>] [role=<role>] [constraints=<constraints>] [type=(GUID)] - you must provide constraints".into()),
+        }
+        .into());
+    }
+
     Ok(super::Command::CreatePartition(Box::new(Command {
         disk,
         id,
