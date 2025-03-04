@@ -63,7 +63,7 @@ impl BlockDevice {
 
     /// Returns the path to the partition with the given index.
     /// No attempt is made to verify the existence of the partition.
-    pub fn partition_path(&self, index: u32) -> PathBuf {
+    pub fn partition_path(&self, index: usize) -> PathBuf {
         if let BlockDevice::Disk(disk) = self {
             match **disk {
                 Disk::Scsi(_) | Disk::Virtual(_) => {
