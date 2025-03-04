@@ -6,7 +6,7 @@ use crate::{get_kdl_entry, kdl_value_to_storage_size};
 
 /// Constraints for partition size, 1:1 mapping to SizeRequirements in
 /// partitioning strategy internals.
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum Constraints {
     /// Exact size in bytes
     Exact(u64),
@@ -16,6 +16,10 @@ pub enum Constraints {
     Range { min: u64, max: u64 },
     /// Use all remaining space
     Remaining,
+
+    /// Default constraints
+    #[default]
+    Invalid,
 }
 
 impl Constraints {

@@ -23,6 +23,7 @@ pub struct Command {
     /// The GUID of the partition type
     pub partition_type: Option<PartitionTypeGuid>,
 
+    /// Constraints for the partition
     pub constraints: Constraints,
 }
 
@@ -36,23 +37,27 @@ pub(crate) fn parse(context: Context<'_>) -> Result<super::Command, crate::Error
         None
     };
 
-    let constraints =
-        if let Some(constraints) = context.node.iter_children().find(|n| n.name().value() == "constraints") {
-            Constraints::from_kdl_node(constraints)?
-        } else {
-            return Err(crate::Error::MissingNode("constraints"));
-        };
+    let mut constraints = Constraints::default();
+    let mut partition_type = None;
 
-    let partition_type = if let Some(partition_type) = context.node.iter_children().find(|n| n.name().value() == "type")
-    {
-        match PartitionTypeKDL::from_kdl_type(get_kdl_entry(partition_type, &0)?)? {
-            PartitionTypeKDL::GUID => Some(PartitionTypeGuid::from_kdl_node(partition_type)?),
+    for child in context.node.iter_children() {
+        match child.name().value() {
+            "constraints" => constraints = Constraints::from_kdl_node(child)?,
+            "type" => {
+                partition_type = match PartitionTypeKDL::from_kdl_type(get_kdl_entry(child, &0)?)? {
+                    PartitionTypeKDL::GUID => Some(PartitionTypeGuid::from_kdl_node(child)?),
+                }
+            }
+            _ => {
+                return Err(crate::UnsupportedNode {
+                    at: child.span(),
+                    name: child.name().value().into(),
+                }
+                .into())
+            }
         }
-    } else {
-        None
-    };
+    }
 
-    // TODO: Load constraints etc
     Ok(super::Command::CreatePartition(Box::new(Command {
         disk,
         id,

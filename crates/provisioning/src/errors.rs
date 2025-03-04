@@ -108,7 +108,7 @@ pub struct MissingEntry {
 /// Error for unsupported node types
 #[derive(Debug, Diagnostic, Error)]
 #[error("unsupported node: {name}")]
-#[diagnostic(severity(warning))]
+#[diagnostic(severity(error))]
 pub struct UnsupportedNode {
     #[label]
     pub at: SourceSpan,

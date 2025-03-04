@@ -18,6 +18,10 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
             max (GiB)2
         }
         type (GUID)"efi-system-partition"
+        filesystem {
+            type "fat32"
+            label "ESP"
+        }
     }
 
     // Create xbootldr
@@ -27,6 +31,10 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
             max (GiB)4
         }
         type (GUID) "linux-extended-boot"
+        filesystem {
+            type "fat32"
+            label "XBOOTLDR"
+        }
     }
 
     // Create a partition for rootfs
@@ -34,6 +42,10 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
         constraints {
             min (GiB)30
             max (GiB)120
+        }
+        filesystem {
+            type "any"
+            label "ROOT"
         }
     }
 
