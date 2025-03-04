@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::{
-    get_kdl_entry, get_kdl_property, get_property_str, Constraints, Context, FromKdlProperty, FromKdlType,
+    get_kdl_entry, get_kdl_property, get_property_str, Constraints, Context, Filesystem, FromKdlProperty, FromKdlType,
     PartitionRole, PartitionTypeGuid, PartitionTypeKDL,
 };
 
@@ -25,6 +25,9 @@ pub struct Command {
 
     /// Constraints for the partition
     pub constraints: Constraints,
+
+    /// The filesystem to format the partition with
+    pub filesystem: Option<Filesystem>,
 }
 
 /// Generate a command to create a partition
@@ -39,6 +42,7 @@ pub(crate) fn parse(context: Context<'_>) -> Result<super::Command, crate::Error
 
     let mut constraints = Constraints::default();
     let mut partition_type = None;
+    let mut filesystem = None;
 
     for child in context.node.iter_children() {
         match child.name().value() {
@@ -48,6 +52,7 @@ pub(crate) fn parse(context: Context<'_>) -> Result<super::Command, crate::Error
                     PartitionTypeKDL::GUID => Some(PartitionTypeGuid::from_kdl_node(child)?),
                 }
             }
+            "filesystem" => filesystem = Some(Filesystem::from_kdl_node(child)?),
             _ => {
                 return Err(crate::UnsupportedNode {
                     at: child.span(),
@@ -72,5 +77,6 @@ pub(crate) fn parse(context: Context<'_>) -> Result<super::Command, crate::Error
         role,
         constraints,
         partition_type,
+        filesystem,
     })))
 }

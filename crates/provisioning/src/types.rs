@@ -18,6 +18,8 @@ mod units;
 pub use units::*;
 pub mod constraints;
 pub use constraints::*;
+pub mod filesystem;
+pub use filesystem::*;
 mod partition_type;
 pub use partition_type::*;
 
