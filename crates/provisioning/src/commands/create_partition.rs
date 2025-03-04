@@ -3,7 +3,10 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use crate::{get_kdl_property, get_property_str, Constraints, Context, FromKdlProperty, PartitionRole};
+use crate::{
+    get_kdl_entry, get_kdl_property, get_property_str, Constraints, Context, FromKdlProperty, FromKdlType,
+    PartitionRole, PartitionTypeGuid, PartitionTypeKDL,
+};
 
 /// Command to create a partition
 #[derive(Debug)]
@@ -16,6 +19,9 @@ pub struct Command {
 
     /// The role, if any, of the partition
     pub role: Option<PartitionRole>,
+
+    /// The GUID of the partition type
+    pub partition_type: Option<PartitionTypeGuid>,
 
     pub constraints: Constraints,
 }
@@ -37,11 +43,21 @@ pub(crate) fn parse(context: Context<'_>) -> Result<super::Command, crate::Error
             return Err(crate::Error::MissingNode("constraints"));
         };
 
+    let partition_type = if let Some(partition_type) = context.node.iter_children().find(|n| n.name().value() == "type")
+    {
+        match PartitionTypeKDL::from_kdl_type(get_kdl_entry(partition_type, &0)?)? {
+            PartitionTypeKDL::GUID => Some(PartitionTypeGuid::from_kdl_node(partition_type)?),
+        }
+    } else {
+        None
+    };
+
     // TODO: Load constraints etc
     Ok(super::Command::CreatePartition(Box::new(Command {
         disk,
         id,
         role,
         constraints,
+        partition_type,
     })))
 }

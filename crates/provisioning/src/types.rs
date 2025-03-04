@@ -18,6 +18,8 @@ mod units;
 pub use units::*;
 pub mod constraints;
 pub use constraints::*;
+mod partition_type;
+pub use partition_type::*;
 
 /// The type of a KDL value
 #[derive(Debug)]

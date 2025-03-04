@@ -169,7 +169,7 @@ impl Provisioner {
             }
         }
 
-        // OK lets now apply amy mutations to the device assignments
+        // OK lets now apply any mutations to the device assignments
         for (disk_name, device_plan) in device_assignments.iter_mut() {
             debug!("Applying device plan for disk {}", disk_name);
             if let Err(e) = device_plan.strategy.apply(&mut device_plan.planner) {
