@@ -4,7 +4,7 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     // The result is stored in "root_disk" (disk=..)
     find-disk "root_disk" {
         constraints {
-            min (GB)60
+            min (GiB)30
         }
     }
 
@@ -14,8 +14,8 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     // Create the ESP
     create-partition disk="root_disk" role="boot" id="esp" {
         constraints {
-            min (GIB)1
-            max (GIB)2
+            min (GiB)1
+            max (GiB)2
         }
         type (GUID)"efi-system-partition"
     }
@@ -23,8 +23,8 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     // Create xbootldr
     create-partition disk="root_disk" role="extended-boot" id="xbootldr" {
         constraints {
-            min (GIB)2
-            max (GIB)4
+            min (GiB)2
+            max (GiB)4
         }
         type (GUID) "linux-extended-boot"
     }
@@ -32,8 +32,8 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     // Create a partition for rootfs
     create-partition disk="root_disk" id="root" role="root" {
         constraints {
-            min (GIB)30
-            max (GIB)120
+            min (GiB)30
+            max (GiB)120
         }
     }
 
@@ -47,8 +47,8 @@ strategy name="whole_disk_with_swap" inherits="whole_disk" \
     // Create a swap partition in addition to the base strategy
     create-partition disk="root_disk" id="swap" role="swap" {
         constraints {
-            min (GIB)4
-            max (GIB)8
+            min (GiB)4
+            max (GiB)8
         }
         type (GUID)"linux-swap"
     }
