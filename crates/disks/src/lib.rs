@@ -61,6 +61,28 @@ impl BlockDevice {
         }
     }
 
+    /// Returns the path to the partition with the given index.
+    /// No attempt is made to verify the existence of the partition.
+    pub fn partition_path(&self, index: u32) -> PathBuf {
+        if let BlockDevice::Disk(disk) = self {
+            match **disk {
+                Disk::Scsi(_) | Disk::Virtual(_) => {
+                    // Add N to the end of the device name
+                    return disk.device_path().join(format!("{}{}", disk.name(), index));
+                }
+                Disk::Mock(ref d) if d.parts_prefix => {
+                    return PathBuf::from("/dev").join(format!("{}p{}", disk.name(), index));
+                }
+                Disk::Mock(_) => {
+                    return PathBuf::from("/dev").join(format!("{}{}", disk.name(), index));
+                }
+                _ => {}
+            }
+        }
+        // Add pN to the end of the device name
+        self.device().with_file_name(format!("{}p{}", self.name(), index))
+    }
+
     /// Creates a mock block device with a specified number of sectors.
     pub fn mock_device(disk: mock::MockDisk) -> Self {
         BlockDevice::Disk(Box::new(Disk::Mock(disk)))
@@ -180,5 +202,20 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_partition_paths() {
+        // Create a mock SCSI disk
+        let scsi_disk = mock::MockDisk::new_with_name("sda", 1000, false);
+        let device = BlockDevice::mock_device(scsi_disk);
+        assert_eq!(device.partition_path(1).to_str().unwrap(), "/dev/sda1");
+        assert_eq!(device.partition_path(2).to_str().unwrap(), "/dev/sda2");
+
+        // Create a mock NVMe disk
+        let nvme_disk = mock::MockDisk::new_with_name("nvme0n1", 1000, true);
+        let device = BlockDevice::mock_device(nvme_disk);
+        assert_eq!(device.partition_path(1).to_str().unwrap(), "/dev/nvme0n1p1");
+        assert_eq!(device.partition_path(2).to_str().unwrap(), "/dev/nvme0n1p2");
     }
 }
