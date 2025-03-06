@@ -120,7 +120,7 @@ impl<'a> DiskWriter<'a> {
             GptConfig::default().writable(writable).open_from_device(device)?
         };
 
-        let _layout = self.planner.current_layout();
+        let layout = self.planner.current_layout();
         let changes = self.planner.changes();
 
         for change in changes {
@@ -152,6 +152,13 @@ impl<'a> DiskWriter<'a> {
         }
 
         eprintln!("GPT is now: {gpt_table:?}");
+
+        for region in layout.iter() {
+            eprintln!(
+                "Region at: {:?}",
+                region.partition_id.map(|i| self.device.partition_path(i as usize))
+            );
+        }
 
         Ok(())
     }

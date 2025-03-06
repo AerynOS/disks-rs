@@ -82,11 +82,11 @@ pub struct Region {
 
     /// The absolute end position of this region in bytes
     pub end: u64,
+
+    /// The partition ID of this region if it represents a partition
+    pub partition_id: Option<u32>,
 }
 
-/// Default alignment for partition boundaries (1MiB)
-///
-/// Most modern storage devices and partition tables work best with
 /// partitions aligned to 1MiB boundaries. This helps ensure optimal
 /// performance and compatibility.
 pub const PARTITION_ALIGNMENT: u64 = 1024 * 1024;
@@ -98,7 +98,11 @@ pub const PARTITION_ALIGNMENT: u64 = 1024 * 1024;
 impl Region {
     /// Create a new region with the given bounds
     pub fn new(start: u64, end: u64) -> Self {
-        Self { start, end }
+        Self {
+            start,
+            end,
+            partition_id: None,
+        }
     }
 
     /// Get the size of this region in bytes
@@ -229,7 +233,9 @@ impl Planner {
         let mut max_id = 0u32;
 
         for part in device.partitions() {
-            original_regions.push(Region::new(part.start, part.end));
+            let mut region = Region::new(part.start, part.end);
+            region.partition_id = Some(part.number);
+            original_regions.push(region);
             original_partition_ids.push(part.number);
             max_id = max_id.max(part.number);
         }
@@ -311,6 +317,7 @@ impl Planner {
                 layout.push(Region {
                     start: *start,
                     end: *end,
+                    partition_id: Some(*partition_id),
                 });
             }
         }
