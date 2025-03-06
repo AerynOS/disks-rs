@@ -39,9 +39,9 @@ pub enum PlanError {
 #[derive(Debug, Clone)]
 pub enum Change {
     /// Add a new partition
-    AddPartition { start: u64, end: u64 },
+    AddPartition { start: u64, end: u64, partition_id: u32 },
     /// Delete an existing partition
-    DeletePartition { original_index: usize },
+    DeletePartition { original_index: usize, partition_id: u32 },
 }
 
 /// A disk partitioning planner.
@@ -55,6 +55,12 @@ pub struct Planner {
     changes: VecDeque<Change>,
     /// Original partition layout for reference
     original_regions: Vec<Region>,
+    /// Track original partition IDs
+    original_partition_ids: Vec<u32>,
+    /// Next available partition ID for new partitions
+    next_partition_id: u32,
+
+    wipe_disk: bool,
 }
 
 /// A contiguous region of disk space defined by absolute start and end positions
@@ -189,16 +195,24 @@ impl Change {
     /// Get a human readable description of this change
     pub fn describe(&self, disk_size: u64) -> String {
         match self {
-            Change::AddPartition { start, end } => {
+            Change::AddPartition {
+                start,
+                end,
+                partition_id,
+            } => {
                 format!(
-                    "Add new partition: {} ({} at {})",
+                    "Add new partition #{}: {} ({} at {})",
+                    partition_id,
                     format_size(end - start),
                     Region::new(*start, *end).describe(disk_size),
                     format_position(*start, disk_size)
                 )
             }
-            Change::DeletePartition { original_index } => {
-                format!("Delete partition #{}", original_index + 1)
+            Change::DeletePartition {
+                original_index,
+                partition_id,
+            } => {
+                format!("Delete partition #{} (index {})", partition_id, original_index + 1)
             }
         }
     }
@@ -209,18 +223,25 @@ impl Planner {
     pub fn new(device: &BlockDevice) -> Self {
         debug!("Creating new partition planner for device of size {}", device.size());
 
-        // Extract original regions from device
-        let original_regions = device
-            .partitions()
-            .iter()
-            .map(|p| Region::new(p.start, p.end))
-            .collect();
+        // Extract original regions and partition IDs from device
+        let mut original_regions = Vec::new();
+        let mut original_partition_ids = Vec::new();
+        let mut max_id = 0u32;
+
+        for part in device.partitions() {
+            original_regions.push(Region::new(part.start, part.end));
+            original_partition_ids.push(part.number);
+            max_id = max_id.max(part.number);
+        }
 
         Self {
             usable_start: 0,
             usable_end: device.size(),
             changes: VecDeque::new(),
             original_regions,
+            original_partition_ids,
+            next_partition_id: max_id + 1,
+            wipe_disk: false,
         }
     }
 
@@ -262,7 +283,11 @@ impl Planner {
 
         // First pass: collect indices to delete
         for change in &self.changes {
-            if let Change::DeletePartition { original_index } = change {
+            if let Change::DeletePartition {
+                original_index,
+                partition_id: _,
+            } = change
+            {
                 deleted_indices.push(*original_index);
             }
         }
@@ -276,8 +301,13 @@ impl Planner {
 
         // Second pass: add new partitions
         for change in &self.changes {
-            if let Change::AddPartition { start, end } = change {
-                debug!("Adding partition {}..{}", start, end);
+            if let Change::AddPartition {
+                start,
+                end,
+                partition_id,
+            } = change
+            {
+                debug!("Adding partition {}..{} (ID: {})", start, end, partition_id);
                 layout.push(Region {
                     start: *start,
                     end: *end,
@@ -358,10 +388,12 @@ impl Planner {
             }
         }
 
-        debug!("Adding new partition to change queue");
+        let partition_id = self.allocate_partition_id();
+        debug!("Adding new partition with ID {} to change queue", partition_id);
         self.changes.push_back(Change::AddPartition {
             start: aligned_start,
             end: aligned_end,
+            partition_id,
         });
         Ok(())
     }
@@ -378,9 +410,18 @@ impl Planner {
             });
         }
 
-        debug!("Adding partition deletion to change queue");
-        self.changes
-            .push_back(Change::DeletePartition { original_index: index });
+        let partition_id = self
+            .get_original_partition_id(index)
+            .ok_or(PlanError::RegionOutOfBounds {
+                start: self.usable_start,
+                end: self.usable_size(),
+            })?;
+
+        debug!("Adding deletion of partition ID {} to change queue", partition_id);
+        self.changes.push_back(Change::DeletePartition {
+            original_index: index,
+            partition_id,
+        });
         Ok(())
     }
 
@@ -425,7 +466,23 @@ impl Planner {
         debug!("Planning to create new GPT partition table");
         self.changes.clear(); // Clear any existing changes
         self.original_regions.clear(); // Clear original partitions
+        self.wipe_disk = true;
         Ok(())
+    }
+
+    pub fn wipe_disk(&self) -> bool {
+        self.wipe_disk
+    }
+    /// Get the next available partition ID and increment the counter
+    pub fn allocate_partition_id(&mut self) -> u32 {
+        let id = self.next_partition_id;
+        self.next_partition_id += 1;
+        id
+    }
+
+    /// Get the original partition ID for a given index
+    pub fn get_original_partition_id(&self, index: usize) -> Option<u32> {
+        self.original_partition_ids.get(index).copied()
     }
 }
 
