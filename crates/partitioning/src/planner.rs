@@ -445,7 +445,7 @@ impl Planner {
 
     /// Clear all planned changes
     pub fn reset(&mut self) {
-        debug!("Resetting all planned changes");
+        eprintln!("Resetting all planned changes");
         self.changes.clear();
     }
 

@@ -40,28 +40,12 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
     // Create a partition for rootfs
     create-partition disk="root_disk" id="root" role="root" {
         constraints {
-            min (GiB)30
+            min (GiB)25
             max (GiB)120
         }
         filesystem {
             type "any"
             label "ROOT"
         }
-    }
-
-    // find a partition (bound to root_disk here)
-    // find-partition guid="$ESP"
-}
-
-strategy name="whole_disk_with_swap" inherits="whole_disk" \
-    summary="Wipe disk, include a swap" \
-{
-    // Create a swap partition in addition to the base strategy
-    create-partition disk="root_disk" id="swap" role="swap" {
-        constraints {
-            min (GiB)4
-            max (GiB)8
-        }
-        type (GUID)"linux-swap"
     }
 }

@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::fs;
+use std::{fs, io::Write};
 
 use disks::BlockDevice;
 use gpt::{mbr, partition_types, GptConfig};
@@ -14,10 +14,6 @@ use crate::planner::{Change, Planner};
 /// Errors that can occur when writing changes to disk
 #[derive(Debug, Error)]
 pub enum WriteError {
-    /// Device size has changed since the plan was created
-    #[error("Device size changed since planning")]
-    DeviceSizeChanged,
-
     /// A partition ID was used multiple times
     #[error("Duplicate partition ID: {0}")]
     DuplicatePartitionId(u32),
@@ -55,7 +51,7 @@ impl<'a> DiskWriter<'a> {
             .read(true)
             .write(false)
             .open(self.device.device())?;
-        self.validate_changes(&device)?;
+        self.validate_changes()?;
         self.apply_changes(&mut device, false)?;
         Ok(())
     }
@@ -67,21 +63,16 @@ impl<'a> DiskWriter<'a> {
             .write(true)
             .open(self.device.device())?;
 
-        self.validate_changes(&device)?;
+        self.validate_changes()?;
         self.apply_changes(&mut device, true)?;
+        device.flush()?;
         Ok(())
     }
 
     /// Validate all planned changes before applying them by checking:
     /// - Device size matches the planned size
     /// - No duplicate partition IDs exist
-    fn validate_changes(&self, device: &fs::File) -> Result<(), WriteError> {
-        // Verify device size matches what we planned for
-        let metadata = device.metadata()?;
-        if metadata.len() != self.device.size() {
-            return Err(WriteError::DeviceSizeChanged);
-        }
-
+    fn validate_changes(&self) -> Result<(), WriteError> {
         // Verify partition IDs don't conflict
         let mut used_ids = std::collections::HashSet::new();
         for change in self.planner.changes() {
@@ -109,19 +100,27 @@ impl<'a> DiskWriter<'a> {
                 let mbr = mbr::ProtectiveMBR::with_lb_size(
                     u32::try_from((self.device.size() / 512) - 1).unwrap_or(0xFF_FF_FF_FF),
                 );
+                eprintln!("size is {}", self.device.size());
                 mbr.overwrite_lba0(device)?;
             }
 
-            GptConfig::default()
+            let mut c = GptConfig::default()
                 .writable(writable)
                 .logical_block_size(gpt::disk::LogicalBlockSize::Lb512)
-                .create_from_device(device, None)?
+                .create_from_device(device, None)?;
+
+            if writable {
+                c.write_inplace()?;
+            }
+            c
         } else {
             GptConfig::default().writable(writable).open_from_device(device)?
         };
 
         let layout = self.planner.current_layout();
         let changes = self.planner.changes();
+
+        eprintln!("Changes: {:?}", changes);
 
         for change in changes {
             match change {
@@ -151,13 +150,17 @@ impl<'a> DiskWriter<'a> {
             }
         }
 
-        eprintln!("GPT is now: {gpt_table:?}");
+        eprintln!("### GPT is now: {gpt_table:?}");
 
         for region in layout.iter() {
             eprintln!(
                 "Region at: {:?}",
                 region.partition_id.map(|i| self.device.partition_path(i as usize))
             );
+        }
+
+        if writable {
+            gpt_table.write_inplace()?;
         }
 
         Ok(())

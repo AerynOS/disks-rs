@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use disks::BlockDevice;
 use log::{debug, info, trace, warn};
 use partitioning::{
-    planner::Planner,
+    planner::{Planner, PARTITION_ALIGNMENT},
     strategy::{AllocationStrategy, PartitionRequest, SizeRequirement, Strategy},
 };
 
@@ -31,9 +31,9 @@ pub struct Plan<'a> {
 
 #[derive(Debug, Clone)]
 pub struct DevicePlan<'a> {
-    device: &'a BlockDevice,
-    planner: Planner,
-    strategy: Strategy,
+    pub device: &'a BlockDevice,
+    pub planner: Planner,
+    pub strategy: Strategy,
 }
 
 impl Default for Provisioner {
@@ -134,7 +134,9 @@ impl Provisioner {
                             command.name.clone(),
                             DevicePlan {
                                 device,
-                                planner: Planner::new(device),
+                                planner: Planner::new(device)
+                                    .with_start_offset(PARTITION_ALIGNMENT)
+                                    .with_end_offset(device.size() - PARTITION_ALIGNMENT),
                                 strategy: Strategy::new(AllocationStrategy::LargestFree),
                             },
                         );
