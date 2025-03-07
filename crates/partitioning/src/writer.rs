@@ -159,8 +159,10 @@ impl<'a> DiskWriter<'a> {
             );
         }
 
+        // Consume and sync the GPT table
         if writable {
-            gpt_table.write_inplace()?;
+            let original = gpt_table.write()?;
+            original.sync_all()?;
         }
 
         Ok(())
