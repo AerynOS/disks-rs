@@ -209,7 +209,7 @@ mod tests {
         }
 
         let plans = provisioner.plan();
-        assert_eq!(plans.len(), 2);
+        assert_eq!(plans.len(), 1);
 
         let plan = &plans[0];
         assert_eq!(plan.device_assignments.len(), 1);
