@@ -212,6 +212,18 @@ impl Strategy {
         for (_idx, min, max_opt) in &flexible_requests {
             remaining_flexible -= 1;
 
+            // First verify we have enough space for minimum requirement
+            if *min > remaining {
+                // Clean up any changes we made since we can't complete all requests
+                while planner.has_changes() {
+                    planner.undo();
+                }
+                return Err(PlanError::RegionOutOfBounds {
+                    start: current,
+                    end: current + min,
+                });
+            }
+
             let size = if remaining_flexible == 0 {
                 // Last flexible partition gets all remaining space
                 let size = remaining;
@@ -231,9 +243,19 @@ impl Strategy {
                 }
             };
 
-            planner.plan_add_partition(current, current + size)?;
-            current += size;
-            remaining -= size;
+            match planner.plan_add_partition(current, current + size) {
+                Ok(_) => {
+                    current += size;
+                    remaining -= size;
+                }
+                Err(e) => {
+                    // Clean up any changes we made since we can't complete all requests
+                    while planner.has_changes() {
+                        planner.undo();
+                    }
+                    return Err(e);
+                }
+            }
         }
 
         Ok(())
@@ -381,5 +403,68 @@ mod tests {
 
         let layout = planner.current_layout();
         assert_eq!(layout.len(), 2);
+    }
+
+    #[test]
+    fn test_insufficient_space() {
+        let disk = MockDisk::new(10 * GB); // Intentionally small disk
+        let mut planner = Planner::new(&BlockDevice::mock_device(disk));
+        let mut strategy = Strategy::new(AllocationStrategy::InitializeWholeDisk);
+
+        // Try to allocate more than available
+        strategy.add_request(PartitionRequest {
+            size: SizeRequirement::Exact(20 * GB),
+        });
+
+        assert!(strategy.apply(&mut planner).is_err());
+    }
+
+    #[test]
+    fn test_flexible_partition_overflow() {
+        let disk = MockDisk::new(10 * GB);
+        let mut planner = Planner::new(&BlockDevice::mock_device(disk));
+        let mut strategy = Strategy::new(AllocationStrategy::InitializeWholeDisk);
+
+        // Request more than available in flexible partitions
+        strategy.add_request(PartitionRequest {
+            size: SizeRequirement::AtLeast(6 * GB),
+        });
+        strategy.add_request(PartitionRequest {
+            size: SizeRequirement::AtLeast(6 * GB),
+        });
+
+        // Should fail because total minimum (12GB) exceeds disk size (10GB)
+        let result = strategy.apply(&mut planner);
+        assert!(matches!(result, Err(PlanError::RegionOutOfBounds { .. })));
+        assert!(!planner.has_changes());
+    }
+
+    #[test]
+    fn test_partial_partition_creation() {
+        let disk = MockDisk::new(8 * GB);
+        let mut planner = Planner::new(&BlockDevice::mock_device(disk));
+        let mut strategy = Strategy::new(AllocationStrategy::InitializeWholeDisk);
+
+        // Request sequence where first two would fit but third won't
+        strategy.add_request(PartitionRequest {
+            size: SizeRequirement::Range { min: GB, max: 2 * GB },
+        });
+        strategy.add_request(PartitionRequest {
+            size: SizeRequirement::Range {
+                min: 2 * GB,
+                max: 4 * GB,
+            },
+        });
+        strategy.add_request(PartitionRequest {
+            size: SizeRequirement::Range {
+                min: 25 * GB,
+                max: 120 * GB,
+            },
+        });
+
+        // Should fail and undo partial changes
+        let result = strategy.apply(&mut planner);
+        assert!(matches!(result, Err(PlanError::RegionOutOfBounds { .. })));
+        assert!(!planner.has_changes(), "Partial changes should be undone");
     }
 }
