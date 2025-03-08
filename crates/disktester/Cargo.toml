@@ -1,0 +1,9 @@
+[package]
+name = "disktester"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+disks = { path = "../disks" }
+partitioning = { path = "../partitioning" }
+provisioning = { path = "../provisioning" }
