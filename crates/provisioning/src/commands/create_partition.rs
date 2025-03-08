@@ -3,6 +3,8 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+use partitioning::{gpt::partition_types, GptAttributes, PartitionAttributes};
+
 use crate::{
     get_kdl_entry, get_kdl_property, get_property_str, Constraints, Context, Filesystem, FromKdlProperty, FromKdlType,
     PartitionRole, PartitionTypeGuid, PartitionTypeKDL,
@@ -28,6 +30,19 @@ pub struct Command {
 
     /// The filesystem to format the partition with
     pub filesystem: Option<Filesystem>,
+}
+
+impl Command {
+    pub fn attributes(&self) -> PartitionAttributes {
+        PartitionAttributes::Gpt(GptAttributes {
+            type_guid: match &self.partition_type {
+                Some(p) => p.as_guid(),
+                None => partition_types::BASIC,
+            },
+            name: self.partition_type.as_ref().map(|p| p.to_string()),
+            uuid: None,
+        })
+    }
 }
 
 /// Generate a command to create a partition

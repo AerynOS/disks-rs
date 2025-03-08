@@ -163,6 +163,7 @@ impl Provisioner {
                                 Constraints::Range { min, max } => SizeRequirement::Range { min: *min, max: *max },
                                 _ => SizeRequirement::Remaining,
                             },
+                            attributes: Some(command.attributes()),
                         });
                     } else {
                         warn!("Could not find disk {} to create partition", command.disk);

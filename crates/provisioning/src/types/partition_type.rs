@@ -58,14 +58,16 @@ pub enum PartitionTypeGuid {
     EfiSystemPartition,
     ExtendedBootLoader,
     LinuxSwap,
+    LinuxFilesystem,
 }
 
 impl fmt::Display for PartitionTypeGuid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EfiSystemPartition => f.write_str("efi-system-partition"),
-            Self::ExtendedBootLoader => f.write_str("linux-extended-boot"),
-            Self::LinuxSwap => f.write_str("linux-swap"),
+            Self::EfiSystemPartition => f.write_str("EFI System Partition"),
+            Self::ExtendedBootLoader => f.write_str("Linux Extended Boot"),
+            Self::LinuxFilesystem => f.write_str("Linux Filesystem"),
+            Self::LinuxSwap => f.write_str("Linux Swap"),
         }
     }
 }
@@ -78,6 +80,7 @@ impl FromStr for PartitionTypeGuid {
             "efi-system-partition" => Ok(Self::EfiSystemPartition),
             "linux-extended-boot" => Ok(Self::ExtendedBootLoader),
             "linux-swap" => Ok(Self::LinuxSwap),
+            "linux-fs" => Ok(Self::LinuxFilesystem),
             _ => Err(crate::Error::UnknownVariant),
         }
     }
@@ -90,6 +93,7 @@ impl PartitionTypeGuid {
             Self::EfiSystemPartition => gpt::partition_types::EFI,
             Self::ExtendedBootLoader => gpt::partition_types::FREEDESK_BOOT,
             Self::LinuxSwap => gpt::partition_types::LINUX_SWAP,
+            Self::LinuxFilesystem => gpt::partition_types::LINUX_FS,
         }
     }
 
@@ -97,7 +101,9 @@ impl PartitionTypeGuid {
         let value = kdl_value_to_string(get_kdl_entry(node, &0)?)?;
         let v = value.parse().map_err(|_| crate::UnsupportedValue {
             at: node.span(),
-            advice: Some("'efi-system-partition', 'linux-swap', and 'linux-extended-boot' are supported".into()),
+            advice: Some(
+                "'efi-system-partition', 'linux-swap' 'linux-extended-boot' and 'linux-fs' are supported".into(),
+            ),
         })?;
         Ok(v)
     }

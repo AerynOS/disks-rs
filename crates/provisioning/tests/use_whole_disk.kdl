@@ -43,6 +43,7 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
             min (GiB)25
             max (GiB)120
         }
+        type (GUID)"linux-fs"
         filesystem {
             type "any"
             label "ROOT"
