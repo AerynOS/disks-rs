@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use partitioning::{gpt::partition_types, GptAttributes, PartitionAttributes};
+use partitioning::{gpt::partition_types, GptAttributes, PartitionAttributes, TableAttributes};
 
 use crate::{
     get_kdl_entry, get_kdl_property, get_property_str, Constraints, Context, Filesystem, FromKdlProperty, FromKdlType,
@@ -34,14 +34,16 @@ pub struct Command {
 
 impl Command {
     pub fn attributes(&self) -> PartitionAttributes {
-        PartitionAttributes::Gpt(GptAttributes {
-            type_guid: match &self.partition_type {
-                Some(p) => p.as_guid(),
-                None => partition_types::BASIC,
-            },
-            name: self.partition_type.as_ref().map(|p| p.to_string()),
-            uuid: None,
-        })
+        PartitionAttributes {
+            table: TableAttributes::Gpt(GptAttributes {
+                type_guid: match &self.partition_type {
+                    Some(p) => p.as_guid(),
+                    None => partition_types::BASIC,
+                },
+                name: self.partition_type.as_ref().map(|p| p.to_string()),
+                uuid: None,
+            }),
+        }
     }
 }
 

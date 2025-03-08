@@ -5,7 +5,7 @@
 use gpt::partition_types;
 use uuid::Uuid;
 
-/// Represents the attributes of a GPT partition
+/// Represents the table attributes of a GPT partition
 #[derive(Debug, Clone)]
 pub struct GptAttributes {
     /// The type GUID that identifies the partition type
@@ -28,13 +28,13 @@ impl Default for GptAttributes {
 
 /// Represents attributes specific to different partition table types
 #[derive(Debug, Clone)]
-pub enum PartitionAttributes {
+pub enum TableAttributes {
     /// GPT partition attributes
     Gpt(GptAttributes),
     //Mbr(MbrAttributes),
 }
 
-impl PartitionAttributes {
+impl TableAttributes {
     /// Returns a reference to the GPT attributes if this is a GPT partition
     ///
     /// # Returns
@@ -42,7 +42,13 @@ impl PartitionAttributes {
     /// - `None` if this is not a GPT partition
     pub fn as_gpt(&self) -> Option<&GptAttributes> {
         match self {
-            PartitionAttributes::Gpt(attr) => Some(attr),
+            TableAttributes::Gpt(attr) => Some(attr),
         }
     }
+}
+
+/// Represents the attributes of a partition
+#[derive(Debug, Clone)]
+pub struct PartitionAttributes {
+    pub table: TableAttributes,
 }

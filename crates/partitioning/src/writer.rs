@@ -146,7 +146,7 @@ impl<'a> DiskWriter<'a> {
                 } => {
                     let start_lba = *start / 512;
                     let size_lba = (*end - *start) / 512;
-                    let (part_type, part_name) = match attributes.as_ref().and_then(|a| a.as_gpt()) {
+                    let (part_type, part_name) = match attributes.as_ref().and_then(|a| a.table.as_gpt()) {
                         Some(GptAttributes { type_guid, name, .. }) => {
                             (type_guid.clone(), name.clone().unwrap_or_default())
                         }
