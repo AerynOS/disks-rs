@@ -6,6 +6,9 @@ pub mod blkpg;
 pub mod loopback;
 pub mod sparsefile;
 
+mod attributes;
+pub use attributes::*;
+
 pub use gpt;
 
 pub mod planner;

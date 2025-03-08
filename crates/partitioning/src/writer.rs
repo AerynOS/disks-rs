@@ -9,7 +9,10 @@ use disks::BlockDevice;
 use gpt::{mbr, partition_types, GptConfig};
 use thiserror::Error;
 
-use crate::planner::{Change, Planner};
+use crate::{
+    planner::{Change, Planner},
+    GptAttributes,
+};
 
 /// Errors that can occur when writing changes to disk
 #[derive(Debug, Error)]
@@ -139,12 +142,19 @@ impl<'a> DiskWriter<'a> {
                     start,
                     end,
                     partition_id,
+                    attributes,
                 } => {
                     let start_lba = *start / 512;
                     let size_lba = (*end - *start) / 512;
-                    let part_type = partition_types::BASIC;
+                    let (part_type, part_name) = match attributes.as_ref().and_then(|a| a.as_gpt()) {
+                        Some(GptAttributes { type_guid, name, .. }) => {
+                            (type_guid.clone(), name.clone().unwrap_or_default())
+                        }
+                        None => (partition_types::BASIC, "".to_string()),
+                    };
 
-                    let id = gpt_table.add_partition_at("", *partition_id, start_lba, size_lba, part_type, 0)?;
+                    let id =
+                        gpt_table.add_partition_at(&part_name, *partition_id, start_lba, size_lba, part_type, 0)?;
                     println!("Added partition {}: {:?}", partition_id, id);
                 }
             }

@@ -20,15 +20,18 @@
 //! // Request needed partitions
 //! strategy.add_request(PartitionRequest {
 //!     size: SizeRequirement::Exact(512 * 1024 * 1024), // 512MB EFI partition
+//!     attributes: None,
 //! });
 //! strategy.add_request(PartitionRequest {
 //!     size: SizeRequirement::Remaining, // Rest for root
+//!     attributes: None,
 //! });
 //! ```
 
 use crate::planner::{PlanError, Planner};
 
 use crate::planner::Region;
+use crate::PartitionAttributes;
 
 /// Strategy for allocating partitions
 #[derive(Debug, Clone)]
@@ -61,6 +64,7 @@ pub enum SizeRequirement {
 #[derive(Debug, Clone)]
 pub struct PartitionRequest {
     pub size: SizeRequirement,
+    pub attributes: Option<PartitionAttributes>,
 }
 
 /// Handles planning partition layouts according to specific strategies
@@ -201,7 +205,7 @@ impl Strategy {
         // First pass: allocate exact size partitions
         for request in &self.requests {
             if let SizeRequirement::Exact(size) = request.size {
-                planner.plan_add_partition(current, current + size)?;
+                planner.plan_add_partition_with_attributes(current, current + size, request.attributes.clone())?;
                 current += size;
                 remaining -= size;
             }
@@ -209,7 +213,7 @@ impl Strategy {
 
         // Second pass: allocate flexible partitions
         let mut remaining_flexible = flexible_requests.len();
-        for (_idx, min, max_opt) in &flexible_requests {
+        for (idx, min, max_opt) in &flexible_requests {
             remaining_flexible -= 1;
 
             // First verify we have enough space for minimum requirement
@@ -243,7 +247,11 @@ impl Strategy {
                 }
             };
 
-            match planner.plan_add_partition(current, current + size) {
+            match planner.plan_add_partition_with_attributes(
+                current,
+                current + size,
+                self.requests.get(*idx).and_then(|r| r.attributes.clone()),
+            ) {
                 Ok(_) => {
                     current += size;
                     remaining -= size;
@@ -284,6 +292,7 @@ mod tests {
     fn root_partition() -> PartitionRequest {
         PartitionRequest {
             size: SizeRequirement::AtLeast(ROOT_MIN),
+            attributes: None,
         }
     }
 
@@ -294,6 +303,7 @@ mod tests {
                 min: ROOT_MIN,
                 max: ROOT_MAX,
             },
+            attributes: None,
         }
     }
 
@@ -301,6 +311,7 @@ mod tests {
     fn efi_partition() -> PartitionRequest {
         PartitionRequest {
             size: SizeRequirement::Exact(EFI_SIZE),
+            attributes: None,
         }
     }
 
@@ -308,6 +319,7 @@ mod tests {
     fn boot_partition() -> PartitionRequest {
         PartitionRequest {
             size: SizeRequirement::Exact(BOOT_SIZE),
+            attributes: None,
         }
     }
 
@@ -318,6 +330,7 @@ mod tests {
                 min: SWAP_MIN,
                 max: SWAP_MAX,
             },
+            attributes: None,
         }
     }
 
@@ -325,6 +338,7 @@ mod tests {
     fn home_partition() -> PartitionRequest {
         PartitionRequest {
             size: SizeRequirement::Remaining,
+            attributes: None,
         }
     }
     fn create_test_disk() -> MockDisk {
@@ -395,6 +409,7 @@ mod tests {
         strategy.add_request(boot_partition());
         strategy.add_request(PartitionRequest {
             size: SizeRequirement::Remaining,
+            attributes: None,
         });
 
         eprintln!("\nMinimal Server Strategy:\n{}", strategy.describe());
@@ -414,6 +429,7 @@ mod tests {
         // Try to allocate more than available
         strategy.add_request(PartitionRequest {
             size: SizeRequirement::Exact(20 * GB),
+            attributes: None,
         });
 
         assert!(strategy.apply(&mut planner).is_err());
@@ -428,9 +444,11 @@ mod tests {
         // Request more than available in flexible partitions
         strategy.add_request(PartitionRequest {
             size: SizeRequirement::AtLeast(6 * GB),
+            attributes: None,
         });
         strategy.add_request(PartitionRequest {
             size: SizeRequirement::AtLeast(6 * GB),
+            attributes: None,
         });
 
         // Should fail because total minimum (12GB) exceeds disk size (10GB)
@@ -448,18 +466,21 @@ mod tests {
         // Request sequence where first two would fit but third won't
         strategy.add_request(PartitionRequest {
             size: SizeRequirement::Range { min: GB, max: 2 * GB },
+            attributes: None,
         });
         strategy.add_request(PartitionRequest {
             size: SizeRequirement::Range {
                 min: 2 * GB,
                 max: 4 * GB,
             },
+            attributes: None,
         });
         strategy.add_request(PartitionRequest {
             size: SizeRequirement::Range {
                 min: 25 * GB,
                 max: 120 * GB,
             },
+            attributes: None,
         });
 
         // Should fail and undo partial changes

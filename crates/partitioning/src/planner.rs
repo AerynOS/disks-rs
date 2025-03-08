@@ -17,6 +17,8 @@ use log::{debug, warn};
 use std::collections::VecDeque;
 use thiserror::Error;
 
+use crate::PartitionAttributes;
+
 /// Errors that can occur while planning partition changes
 ///
 /// These errors help prevent invalid partition layouts by catching problems
@@ -39,7 +41,12 @@ pub enum PlanError {
 #[derive(Debug, Clone)]
 pub enum Change {
     /// Add a new partition
-    AddPartition { start: u64, end: u64, partition_id: u32 },
+    AddPartition {
+        start: u64,
+        end: u64,
+        partition_id: u32,
+        attributes: Option<PartitionAttributes>,
+    },
     /// Delete an existing partition
     DeletePartition { original_index: usize, partition_id: u32 },
 }
@@ -203,6 +210,7 @@ impl Change {
                 start,
                 end,
                 partition_id,
+                ..
             } => {
                 format!(
                     "Add new partition #{}: {} ({} at {})",
@@ -311,6 +319,7 @@ impl Planner {
                 start,
                 end,
                 partition_id,
+                ..
             } = change
             {
                 debug!("Adding partition {}..{} (ID: {})", start, end, partition_id);
@@ -326,6 +335,10 @@ impl Planner {
         layout
     }
 
+    pub fn plan_add_partition(&mut self, start: u64, end: u64) -> Result<(), PlanError> {
+        self.plan_add_partition_with_attributes(start, end, None)
+    }
+
     /// Plan to add a new partition between two absolute positions on disk.
     ///
     /// # Arguments
@@ -335,7 +348,12 @@ impl Planner {
     /// Both positions will be aligned to the nearest appropriate boundary (usually 1MB).
     /// The partition will occupy the range [start, end).
     ///
-    pub fn plan_add_partition(&mut self, start: u64, end: u64) -> Result<(), PlanError> {
+    pub fn plan_add_partition_with_attributes(
+        &mut self,
+        start: u64,
+        end: u64,
+        attributes: Option<PartitionAttributes>,
+    ) -> Result<(), PlanError> {
         debug!("Planning to add partition {}..{}", start, end);
         debug!("Original size requested: {}", end - start);
 
@@ -401,6 +419,7 @@ impl Planner {
             start: aligned_start,
             end: aligned_end,
             partition_id,
+            attributes,
         });
         Ok(())
     }
