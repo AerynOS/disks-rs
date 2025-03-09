@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use disks::BlockDevice;
-use partitioning::{blkpg, loopback, sparsefile, writer::DiskWriter};
+use partitioning::{blkpg, loopback, sparsefile, writer::DiskWriter, Formatter};
 use provisioning::{Parser, Provisioner, StrategyDefinition};
 
 /// Loads provisioning strategies from a configuration file
@@ -58,9 +58,37 @@ fn apply_partitioning(whence: &Path) -> Result<(), Box<dyn std::error::Error>> {
         disk_writer.write()?;
     }
 
-    for (device, fs) in plan.filesystems.iter() {
-        eprintln!("To format: {:?} with {:?}", device, fs);
+    // Sync partition table changes
+    blkpg::sync_gpt_partitions(whence)?;
+
+    let mut formatters = plan
+        .filesystems
+        .iter()
+        .map(|(device, fs)| {
+            let formatter = Formatter::new(fs.clone()).force();
+            formatter.format(device)
+        })
+        .collect::<Vec<_>>();
+
+    for operation in formatters.iter_mut() {
+        match operation.output() {
+            Ok(output) => {
+                let stdout = std::str::from_utf8(&output.stdout).expect("Invalid UTF-8");
+                if output.status.success() {
+                    eprintln!("Format success: {}", stdout);
+                } else {
+                    let stderr = std::str::from_utf8(&output.stderr).expect("Invalid UTF-8");
+                    eprintln!("Format error: {}", stderr);
+                }
+                eprintln!("Format output: {}", stdout);
+            }
+            Err(e) => {
+                eprintln!("Format error: {}", e);
+            }
+        }
     }
+
+    eprintln!("Format operations: {:?}", formatters);
 
     for (role, device) in plan.role_mounts.iter() {
         eprintln!("To mount: {:?} as {:?} (`{}`)", device, role, role.as_path());
@@ -83,9 +111,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(e) = apply_partitioning(&whence) {
         eprintln!("Error applying partitioning: {}", e);
     }
-
-    // Sync partition table changes
-    blkpg::sync_gpt_partitions(whence)?;
 
     // Clean up loopback device
     l.detach()?;
