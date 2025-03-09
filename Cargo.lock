@@ -778,6 +778,7 @@ dependencies = [
  "phf",
  "test-log",
  "thiserror 2.0.11",
+ "types",
  "uuid",
 ]
 
@@ -1190,6 +1191,17 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "types"
+version = "0.1.0"
+dependencies = [
+ "gpt",
+ "kdl",
+ "miette",
+ "thiserror 2.0.11",
+ "uuid",
 ]
 
 [[package]]
