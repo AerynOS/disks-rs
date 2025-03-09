@@ -5,80 +5,60 @@
 
 use std::{fmt, str::FromStr};
 
-use crate::{get_kdl_entry, kdl_value_to_string};
+use crate::{get_kdl_entry, kdl_value_to_integer, kdl_value_to_string};
 
 use super::FromKdlProperty;
 
 /// The filesystem information for a partition
 /// This is used to format the partition with a filesystem
-///
-/// The "any" filesystem type is used to indicate that any filesystem is acceptable.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Filesystem {
-    /// The filesystem type
-    pub filesystem_type: FilesystemType,
-
-    /// The label of the filesystem
-    pub label: Option<String>,
-
-    /// The UUID of the filesystem
-    pub uuid: Option<String>,
-}
-
-/// The filesystem type for a partition
-#[derive(Debug, Clone, PartialEq, Default)]
-pub enum FilesystemType {
-    /// FAT32 filesystem
-    Fat32,
-
-    /// F2FS filesystem
-    F2fs,
-
-    /// EXT4 filesystem
-    Ext4,
-
-    /// XFS filesystem
-    Xfs,
-
-    /// Swap partition
-    Swap,
-
-    /// Any filesystem
-    #[default]
+pub enum Filesystem {
+    Fat32 {
+        label: Option<String>,
+        volume_id: Option<u32>,
+    },
+    Standard {
+        filesystem_type: StandardFilesystemType,
+        label: Option<String>,
+        uuid: Option<String>,
+    },
     Any,
 }
 
-impl fmt::Display for FilesystemType {
+#[derive(Debug, Clone, PartialEq)]
+pub enum StandardFilesystemType {
+    F2fs,
+    Ext4,
+    Xfs,
+    Swap,
+}
+
+impl fmt::Display for StandardFilesystemType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Fat32 => f.write_str("fat32"),
             Self::Ext4 => f.write_str("ext4"),
             Self::F2fs => f.write_str("f2fs"),
             Self::Xfs => f.write_str("xfs"),
             Self::Swap => f.write_str("swap"),
-            Self::Any => f.write_str("any"),
         }
     }
 }
 
-impl FromStr for FilesystemType {
+impl FromStr for StandardFilesystemType {
     type Err = crate::Error;
 
-    /// Attempt to convert a string to a filesystem type
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "fat32" => Ok(Self::Fat32),
             "ext4" => Ok(Self::Ext4),
             "f2fs" => Ok(Self::F2fs),
             "xfs" => Ok(Self::Xfs),
             "swap" => Ok(Self::Swap),
-            "any" => Ok(Self::Any),
             _ => Err(crate::Error::UnknownVariant),
         }
     }
 }
 
-impl FromKdlProperty<'_> for FilesystemType {
+impl FromKdlProperty<'_> for StandardFilesystemType {
     fn from_kdl_property(entry: &kdl::KdlEntry) -> Result<Self, crate::Error> {
         let value = kdl_value_to_string(entry)?;
         let v = value.parse().map_err(|_| crate::UnsupportedValue {
@@ -91,15 +71,17 @@ impl FromKdlProperty<'_> for FilesystemType {
 
 impl Filesystem {
     pub fn from_kdl_node(node: &kdl::KdlNode) -> Result<Self, crate::Error> {
-        let mut filesystem_type = None;
+        let mut fs_type = None;
         let mut label = None;
         let mut uuid = None;
+        let mut volume_id = None;
 
         for entry in node.iter_children() {
             match entry.name().value() {
-                "type" => filesystem_type = Some(FilesystemType::from_kdl_property(get_kdl_entry(entry, &0)?)?),
+                "type" => fs_type = Some(kdl_value_to_string(get_kdl_entry(entry, &0)?)?),
                 "label" => label = Some(kdl_value_to_string(get_kdl_entry(entry, &0)?)?),
                 "uuid" => uuid = Some(kdl_value_to_string(get_kdl_entry(entry, &0)?)?),
+                "volume_id" => volume_id = Some(kdl_value_to_integer(get_kdl_entry(entry, &0)?)? as u32),
                 _ => {
                     return Err(crate::UnsupportedNode {
                         at: entry.span(),
@@ -110,13 +92,37 @@ impl Filesystem {
             }
         }
 
-        Ok(Self {
-            filesystem_type: filesystem_type.ok_or(crate::UnsupportedNode {
-                at: node.span(),
-                name: "type".into(),
-            })?,
-            label,
-            uuid,
-        })
+        let fs_type = fs_type.ok_or(crate::UnsupportedNode {
+            at: node.span(),
+            name: "type".into(),
+        })?;
+
+        match fs_type.as_str() {
+            "fat32" => {
+                if uuid.is_some() {
+                    return Err(crate::InvalidArguments {
+                        at: node.span(),
+                        advice: Some("FAT32 does not support UUID".into()),
+                    }
+                    .into());
+                }
+                Ok(Filesystem::Fat32 { label, volume_id })
+            }
+            "any" => Ok(Filesystem::Any),
+            fs_type => {
+                if volume_id.is_some() {
+                    return Err(crate::InvalidArguments {
+                        at: node.span(),
+                        advice: Some(format!("volume_id is only supported for FAT32, not {}", fs_type)),
+                    }
+                    .into());
+                }
+                Ok(Filesystem::Standard {
+                    filesystem_type: fs_type.parse()?,
+                    label,
+                    uuid,
+                })
+            }
+        }
     }
 }
