@@ -9,6 +9,9 @@ pub mod sparsefile;
 mod attributes;
 pub use attributes::*;
 
+mod formatter;
+pub use formatter::*;
+
 pub use gpt;
 
 pub mod planner;
