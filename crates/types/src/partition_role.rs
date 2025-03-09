@@ -10,7 +10,7 @@ use crate::kdl_value_to_string;
 use super::FromKdlProperty;
 
 /// The role assigned to a partition
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PartitionRole {
     /// Boot partition (usually ESP)
     Boot,
@@ -26,6 +26,18 @@ pub enum PartitionRole {
 
     /// Swap partition
     Swap,
+}
+
+impl PartitionRole {
+    pub fn as_path(&self) -> &'static str {
+        match self {
+            Self::Boot => "/efi",
+            Self::ExtendedBoot => "/boot",
+            Self::Root => "/",
+            Self::Home => "/home",
+            Self::Swap => "swap",
+        }
+    }
 }
 
 impl fmt::Display for PartitionRole {

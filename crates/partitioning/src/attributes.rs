@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use gpt::partition_types;
+use types::{Filesystem, PartitionRole};
 use uuid::Uuid;
 
 /// Represents the table attributes of a GPT partition
@@ -51,4 +52,6 @@ impl TableAttributes {
 #[derive(Debug, Clone)]
 pub struct PartitionAttributes {
     pub table: TableAttributes,
+    pub role: Option<PartitionRole>,
+    pub filesystem: Option<Filesystem>,
 }

@@ -6,6 +6,7 @@ description = "A library for working directly with partitions"
 
 [dependencies]
 disks = { path = "../disks" }
+types = { path = "../types" }
 thiserror.workspace = true
 log.workspace = true
 gpt.workspace = true

@@ -43,6 +43,8 @@ impl Command {
                 name: self.partition_type.as_ref().map(|p| p.to_string()),
                 uuid: None,
             }),
+            role: self.role.clone(),
+            filesystem: self.filesystem.clone(),
         }
     }
 }

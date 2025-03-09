@@ -58,6 +58,14 @@ fn apply_partitioning(whence: &Path) -> Result<(), Box<dyn std::error::Error>> {
         disk_writer.write()?;
     }
 
+    for (device, fs) in plan.filesystems.iter() {
+        eprintln!("To format: {:?} with {:?}", device, fs);
+    }
+
+    for (role, device) in plan.role_mounts.iter() {
+        eprintln!("To mount: {:?} as {:?} (`{}`)", device, role, role.as_path());
+    }
+
     Ok(())
 }
 

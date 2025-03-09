@@ -11,17 +11,10 @@ use miette::{Diagnostic, NamedSource, Severity};
 mod provisioner;
 pub use provisioner::*;
 
-mod errors;
-pub use errors::*;
-
-mod helpers;
-use helpers::*;
-
-mod types;
-pub use types::*;
-
 mod commands;
 use commands::*;
+
+pub use types::*;
 
 /// Command evaluation context
 pub struct Context<'a> {

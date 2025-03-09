@@ -13,7 +13,7 @@ use super::FromKdlProperty;
 /// This is used to format the partition with a filesystem
 ///
 /// The "any" filesystem type is used to indicate that any filesystem is acceptable.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Filesystem {
     /// The filesystem type
     pub filesystem_type: FilesystemType,
@@ -26,7 +26,7 @@ pub struct Filesystem {
 }
 
 /// The filesystem type for a partition
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum FilesystemType {
     /// FAT32 filesystem
     Fat32,

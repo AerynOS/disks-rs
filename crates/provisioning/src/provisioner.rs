@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use disks::BlockDevice;
 use log::{debug, info, trace, warn};
@@ -11,6 +11,7 @@ use partitioning::{
     planner::{Planner, PARTITION_ALIGNMENT},
     strategy::{AllocationStrategy, PartitionRequest, SizeRequirement, Strategy},
 };
+use types::{Filesystem, PartitionRole};
 
 use crate::{commands::Command, Constraints, StrategyDefinition};
 
@@ -27,6 +28,12 @@ pub struct Provisioner {
 pub struct Plan<'a> {
     pub strategy: &'a StrategyDefinition,
     pub device_assignments: HashMap<String, DevicePlan<'a>>,
+
+    // Global mount points
+    pub role_mounts: HashMap<PartitionRole, PathBuf>,
+
+    // Filesystems to be formatted
+    pub filesystems: HashMap<PathBuf, Filesystem>,
 }
 
 #[derive(Debug, Clone)]
@@ -172,11 +179,27 @@ impl Provisioner {
             }
         }
 
+        let mut role_mounts = HashMap::new();
+        let mut filesystems = HashMap::new();
+
         // OK lets now apply any mutations to the device assignments
         for (disk_name, device_plan) in device_assignments.iter_mut() {
             debug!("Applying device plan for disk {}", disk_name);
             if let Err(e) = device_plan.strategy.apply(&mut device_plan.planner) {
                 warn!("Failed to apply strategy for disk {}: {:?}", disk_name, e);
+            }
+            for region in device_plan.planner.current_layout().iter() {
+                if let Some(id) = region.partition_id {
+                    let device_path = device_plan.device.partition_path(id as usize);
+                    if let Some(attributes) = region.attributes.as_ref() {
+                        if let Some(role) = attributes.role.as_ref() {
+                            role_mounts.insert(role.clone(), device_path.clone());
+                        }
+                        if let Some(fs) = attributes.filesystem.as_ref() {
+                            filesystems.insert(device_path, fs.clone());
+                        }
+                    }
+                }
             }
         }
 
@@ -184,6 +207,8 @@ impl Provisioner {
         debug!("Creating final plan for strategy {}", strategy.name);
         plans.push(Plan {
             strategy,
+            role_mounts,
+            filesystems,
             device_assignments: device_assignments.clone(),
         });
     }

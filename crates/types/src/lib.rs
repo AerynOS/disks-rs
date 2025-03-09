@@ -7,7 +7,12 @@ use std::fmt;
 
 use kdl::{KdlEntry, KdlValue};
 
-use crate::Error;
+mod kdl_helpers;
+pub use kdl_helpers::*;
+mod errors;
+pub use errors::*;
+
+pub use gpt;
 
 mod partition_table;
 pub use partition_table::*;

@@ -9,6 +9,7 @@ miette = { workspace = true, features = ["fancy"] }
 [dependencies]
 disks = { path = "../disks" }
 partitioning = { path = "../partitioning" }
+types = { path = "../types" }
 kdl = { workspace = true, features = ["span"] }
 miette = { workspace = true }
 itertools = { workspace = true }

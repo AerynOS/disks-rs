@@ -6,7 +6,6 @@
 use std::{fmt, str::FromStr};
 
 pub use gpt::partition_types::Type as GptPartitionType;
-use partitioning::gpt;
 pub use uuid::Uuid;
 
 use crate::{get_kdl_entry, kdl_value_to_string, UnsupportedValue};

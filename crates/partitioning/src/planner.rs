@@ -92,6 +92,8 @@ pub struct Region {
 
     /// The partition ID of this region if it represents a partition
     pub partition_id: Option<u32>,
+
+    pub attributes: Option<PartitionAttributes>,
 }
 
 /// partitions aligned to 1MiB boundaries. This helps ensure optimal
@@ -109,6 +111,7 @@ impl Region {
             start,
             end,
             partition_id: None,
+            attributes: None,
         }
     }
 
@@ -319,7 +322,7 @@ impl Planner {
                 start,
                 end,
                 partition_id,
-                ..
+                attributes,
             } = change
             {
                 debug!("Adding partition {}..{} (ID: {})", start, end, partition_id);
@@ -327,6 +330,7 @@ impl Planner {
                     start: *start,
                     end: *end,
                     partition_id: Some(*partition_id),
+                    attributes: attributes.clone(),
                 });
             }
         }
