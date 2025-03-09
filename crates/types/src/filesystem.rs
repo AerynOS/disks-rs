@@ -22,7 +22,6 @@ pub enum Filesystem {
         label: Option<String>,
         uuid: Option<String>,
     },
-    Any,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -63,7 +62,7 @@ impl FromKdlProperty<'_> for StandardFilesystemType {
         let value = kdl_value_to_string(entry)?;
         let v = value.parse().map_err(|_| crate::UnsupportedValue {
             at: entry.span(),
-            advice: Some("'fat32', 'ext4', 'f2fs', 'xfs' 'swap' and 'any' are supported".into()),
+            advice: Some("'fat32', 'ext4', 'f2fs', 'xfs' 'swap' are supported".into()),
         })?;
         Ok(v)
     }
@@ -108,7 +107,6 @@ impl Filesystem {
                 }
                 Ok(Filesystem::Fat32 { label, volume_id })
             }
-            "any" => Ok(Filesystem::Any),
             fs_type => {
                 if volume_id.is_some() {
                     return Err(crate::InvalidArguments {

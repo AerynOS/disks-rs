@@ -45,7 +45,7 @@ strategy name="whole_disk" summary="Wipe and use an entire disk" {
         }
         type (GUID)"linux-fs"
         filesystem {
-            type "any"
+            type "xfs"
             label "ROOT"
         }
     }

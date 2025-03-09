@@ -31,7 +31,6 @@ impl FilesystemExt for Filesystem {
                 types::StandardFilesystemType::Xfs => "mkfs.xfs",
                 types::StandardFilesystemType::Swap => "mkswap",
             },
-            Filesystem::Any => panic!("Cannot format with 'any' filesystem type"),
         }
     }
 
@@ -58,7 +57,6 @@ impl FilesystemExt for Filesystem {
                     vec![]
                 }
             }
-            Filesystem::Any => vec![],
         }
     }
 
@@ -85,7 +83,6 @@ impl FilesystemExt for Filesystem {
                     vec![]
                 }
             }
-            Filesystem::Any => panic!("Cannot format with 'any' filesystem type"),
         }
     }
 
@@ -98,7 +95,6 @@ impl FilesystemExt for Filesystem {
                 types::StandardFilesystemType::Xfs => vec!["-f".to_string()],
                 types::StandardFilesystemType::Swap => vec!["-f".to_string()],
             },
-            Filesystem::Any => vec![],
         }
     }
 }
@@ -118,12 +114,9 @@ impl Formatter {
         }
     }
 
-    /// Creates a new Formatter with force enabled
-    pub fn force(filesystem: Filesystem) -> Self {
-        Self {
-            filesystem,
-            force: true,
-        }
+    /// Forces the format operation
+    pub fn force(self) -> Self {
+        Self { force: true, ..self }
     }
 
     /// Returns a Command configured to format the given device with the filesystem
@@ -184,12 +177,5 @@ mod tests {
         assert_eq!(fs.mkfs_command(), "mkfs.xfs");
         assert_eq!(fs.uuid_arg(), vec!["-m".to_string(), format!("uuid={}", uuid)]);
         assert_eq!(fs.label_arg(), vec!["-L", "data"]);
-    }
-
-    #[test]
-    #[should_panic(expected = "Cannot format with 'any' filesystem type")]
-    fn test_any_filesystem_panic() {
-        let fs = Filesystem::Any;
-        fs.mkfs_command();
     }
 }
