@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::{fs, io::Write};
+use std::{fs, io::{Write, Seek}};
 
 use disks::BlockDevice;
 use gpt::{mbr, partition_types, GptConfig};
@@ -100,6 +100,15 @@ impl<'a> DiskWriter<'a> {
     fn apply_changes(&self, device: &mut fs::File, writable: bool) -> Result<(), WriteError> {
         let mut gpt_table = if self.planner.wipe_disk() {
             if writable {
+                // Zero out the first MiB to clear any old partition tables and boot sectors
+                // Write 16*64 KiB = 1 MiB of zeros to the start of the disk
+                let zeros = [0u8; 65_536];
+                device.seek(std::io::SeekFrom::Start(0))?;
+                for _ in 0..16 {
+                    device.write_all(&zeros)?;
+                }
+                device.flush()?;
+
                 let mbr = mbr::ProtectiveMBR::with_lb_size(
                     u32::try_from((self.device.size() / 512) - 1).unwrap_or(0xFF_FF_FF_FF),
                 );
