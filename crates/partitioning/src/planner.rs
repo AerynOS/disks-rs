@@ -496,6 +496,8 @@ impl Planner {
         debug!("Planning to create new GPT partition table");
         self.changes.clear(); // Clear any existing changes
         self.original_regions.clear(); // Clear original partitions
+        self.original_partition_ids.clear();
+        self.next_partition_id = 1;
         self.wipe_disk = true;
         Ok(())
     }
@@ -728,5 +730,27 @@ mod tests {
         // Test align_down past boundary
 
         assert_eq!(align_down(4 * mb + (600 * kb), mb), 5 * mb);
+    }
+
+    #[test]
+    fn test_initialize_disk_partition_numbers() {
+        let mut disk = create_mock_disk();
+        // Add some existing partitions
+        disk.add_partition(0, 100 * MB);
+        disk.add_partition(100 * MB, 200 * MB);
+        disk.add_partition(200 * MB, 300 * MB);
+
+        let mut planner = Planner::new(&BlockDevice::mock_device(disk));
+
+        // Initialize disk should reset partition numbering
+        assert!(planner.plan_initialize_disk().is_ok());
+
+        // Add new partitions - should start from 1
+        assert!(planner.plan_add_partition(0, 100 * MB).is_ok());
+        assert!(planner.plan_add_partition(100 * MB, 200 * MB).is_ok());
+
+        let layout = planner.current_layout();
+        assert_eq!(layout[0].partition_id, Some(1));
+        assert_eq!(layout[1].partition_id, Some(2));
     }
 }
