@@ -68,7 +68,7 @@ impl BlockDevice {
             match **disk {
                 Disk::Scsi(_) | Disk::Virtual(_) => {
                     // Add N to the end of the device name
-                    return disk.device_path().join(format!("{}{}", disk.name(), index));
+                    return disk.device_path().with_file_name(format!("{}{}", disk.name(), index));
                 }
                 Disk::Mock(ref d) if d.parts_prefix => {
                     return PathBuf::from("/dev").join(format!("{}p{}", disk.name(), index));
