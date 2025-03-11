@@ -3,13 +3,17 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::{fs, io::{Write, Seek}};
+use std::{
+    fs,
+    io::{Seek, Write},
+};
 
 use disks::BlockDevice;
 use gpt::{mbr, partition_types, GptConfig};
 use thiserror::Error;
 
 use crate::{
+    blkpg,
     planner::{Change, Planner},
     GptAttributes,
 };
@@ -17,6 +21,10 @@ use crate::{
 /// Errors that can occur when writing changes to disk
 #[derive(Debug, Error)]
 pub enum WriteError {
+    // A blkpg error
+    #[error("error syncing partitions: {0}")]
+    Blkpg(#[from] blkpg::Error),
+
     /// A partition ID was used multiple times
     #[error("Duplicate partition ID: {0}")]
     DuplicatePartitionId(u32),
@@ -98,6 +106,11 @@ impl<'a> DiskWriter<'a> {
     /// - Creating or opening the GPT table
     /// - Applying each change in sequence
     fn apply_changes(&self, device: &mut fs::File, writable: bool) -> Result<(), WriteError> {
+        // Remove known partitions pre wipe
+        if writable {
+            blkpg::remove_kernel_partitions(self.device.device())?;
+        }
+
         let mut gpt_table = if self.planner.wipe_disk() {
             if writable {
                 // Zero out the first MiB to clear any old partition tables and boot sectors
@@ -182,6 +195,7 @@ impl<'a> DiskWriter<'a> {
         if writable {
             let original = gpt_table.write()?;
             original.sync_all()?;
+            blkpg::create_kernel_partitions(self.device.device())?;
         }
 
         Ok(())

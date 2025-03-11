@@ -130,25 +130,16 @@ where
     Ok(())
 }
 
-/// Updates kernel partition representations to match the GPT table
+/// Removes all kernel partitions for the specified block device
 ///
 /// # Arguments
 /// * `path` - Path to the block device
 ///
 /// # Returns
 /// `Result<(), Error>` indicating success or partition operation failure
-pub fn sync_gpt_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
-    info!("Initiating GPT partition synchronization for {:?}", path.as_ref());
+pub fn remove_kernel_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    debug!("Beginning partition cleanup process for {:?}", path.as_ref());
     let file = File::open(&path)?;
-
-    // Read GPT table
-    debug!("Reading GPT partition table");
-    let gpt = gpt::GptConfig::new().writable(false).open(&path)?;
-    let partitions = gpt.partitions();
-    let block_size = 512;
-    info!("Located {} partitions (block size: {})", partitions.len(), block_size);
-
-    debug!("Beginning partition cleanup process");
 
     // Find the disk for enumeration purposes
     let base_name = path
@@ -164,6 +155,28 @@ pub fn sync_gpt_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
         let _ = delete_partition(file.as_raw_fd(), partition.number as i32);
     }
 
+    info!("Successfully removed all kernel partitions");
+    Ok(())
+}
+
+/// Creates kernel partitions based on the current GPT table
+///
+/// # Arguments
+/// * `path` - Path to the block device
+///
+/// # Returns
+/// `Result<(), Error>` indicating success or partition operation failure
+pub fn create_kernel_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    info!("Creating kernel partitions from GPT for {:?}", path.as_ref());
+    let file = File::open(&path)?;
+
+    // Read GPT table
+    debug!("Reading GPT partition table");
+    let gpt = gpt::GptConfig::new().writable(false).open(&path)?;
+    let partitions = gpt.partitions();
+    let block_size = 512;
+    info!("Located {} partitions (block size: {})", partitions.len(), block_size);
+
     // Add partitions from GPT
     debug!("Beginning partition creation from GPT table");
     for (i, partition) in partitions.iter() {
@@ -174,6 +187,23 @@ pub fn sync_gpt_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
             (partition.last_lba - partition.first_lba + 1) as i64 * block_size,
         )?;
     }
+
+    info!("GPT partition creation completed successfully");
+    Ok(())
+}
+
+/// Updates kernel partition representations to match the GPT table
+///
+/// # Arguments
+/// * `path` - Path to the block device
+///
+/// # Returns
+/// `Result<(), Error>` indicating success or partition operation failure
+pub fn sync_gpt_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+    info!("Initiating GPT partition synchronization for {:?}", path.as_ref());
+
+    remove_kernel_partitions(&path)?;
+    create_kernel_partitions(&path)?;
 
     info!("GPT partition synchronization completed successfully");
     Ok(())
