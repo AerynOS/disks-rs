@@ -5,7 +5,7 @@
 
 use std::{
     fs,
-    io::{Seek, Write},
+    io::{self, Seek, Write},
 };
 
 use disks::BlockDevice;
@@ -48,6 +48,21 @@ pub struct DiskWriter<'a> {
     pub device: &'a BlockDevice,
     /// The planner containing the changes to apply
     pub planner: &'a Planner,
+}
+
+/// Zero out up to 2MiB of a region by writing 32 * 64KiB blocks
+fn zero_prefix_n<W: Write + Seek>(writer: &mut W, offset: u64, size: u64) -> io::Result<()> {
+    let zeros = [0u8; 65_536];
+    writer.seek(std::io::SeekFrom::Start(offset))?;
+    // Write up to 32 blocks or until we hit the partition size
+    for _ in 0..32 {
+        if offset + (65_536 * (32 + 1)) as u64 > size {
+            break;
+        }
+        writer.write_all(&zeros)?;
+    }
+    writer.flush()?;
+    Ok(())
 }
 
 impl<'a> DiskWriter<'a> {
@@ -111,16 +126,12 @@ impl<'a> DiskWriter<'a> {
             blkpg::remove_kernel_partitions(self.device.device())?;
         }
 
+        let mut zero_regions = vec![];
+
         let mut gpt_table = if self.planner.wipe_disk() {
             if writable {
                 // Zero out the first MiB to clear any old partition tables and boot sectors
-                // Write 16*64 KiB = 1 MiB of zeros to the start of the disk
-                let zeros = [0u8; 65_536];
-                device.seek(std::io::SeekFrom::Start(0))?;
-                for _ in 0..16 {
-                    device.write_all(&zeros)?;
-                }
-                device.flush()?;
+                zero_prefix_n(device, 0, 1_048_576)?;
 
                 let mbr = mbr::ProtectiveMBR::with_lb_size(
                     u32::try_from((self.device.size() / 512) - 1).unwrap_or(0xFF_FF_FF_FF),
@@ -178,6 +189,10 @@ impl<'a> DiskWriter<'a> {
                     let id =
                         gpt_table.add_partition_at(&part_name, *partition_id, start_lba, size_lba, part_type, 0)?;
                     println!("Added partition {}: {:?}", partition_id, id);
+                    // Store start and size for zeroing
+                    if writable {
+                        zero_regions.push((*start, *end));
+                    }
                 }
             }
         }
@@ -195,6 +210,11 @@ impl<'a> DiskWriter<'a> {
         if writable {
             let original = gpt_table.write()?;
             original.sync_all()?;
+
+            for (start, end) in zero_regions {
+                zero_prefix_n(original, start, end - start)?;
+            }
+
             blkpg::create_kernel_partitions(self.device.device())?;
         }
 
