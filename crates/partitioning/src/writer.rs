@@ -17,6 +17,7 @@ use crate::{
     planner::{Change, Planner},
     GptAttributes,
 };
+const SECTOR_SIZE: u64 = 512;
 
 /// Errors that can occur when writing changes to disk
 #[derive(Debug, Error)]
@@ -50,19 +51,34 @@ pub struct DiskWriter<'a> {
     pub planner: &'a Planner,
 }
 
-/// Zero out up to 2MiB of a region by writing 32 * 64KiB blocks
-fn zero_prefix_n<W: Write + Seek>(writer: &mut W, offset: u64, size: u64) -> io::Result<()> {
+/// Zero out a specific region of the disk
+fn zero_region<W: Write + Seek>(writer: &mut W, offset: u64, size: u64) -> io::Result<()> {
     let zeros = [0u8; 65_536];
     writer.seek(std::io::SeekFrom::Start(offset))?;
-    // Write up to 32 blocks or until we hit the partition size
-    for _ in 0..32 {
-        if offset + (65_536 * (32 + 1)) as u64 > size {
-            break;
-        }
+    let chunks = (size / 65_536) as usize;
+    for _ in 0..chunks {
         writer.write_all(&zeros)?;
+    }
+    // Handle any remaining bytes
+    let remainder = size % 65_536;
+    if remainder > 0 {
+        writer.write_all(&zeros[..remainder as usize])?;
     }
     writer.flush()?;
     Ok(())
+}
+
+/// Zero out disk headers by wiping first 2MiB of the disk
+fn zero_disk_headers<W: Write + Seek>(writer: &mut W) -> io::Result<()> {
+    // Clear first 2MiB to wipe all common boot structures
+    zero_region(writer, 0, 2 * 1024 * 1024)
+}
+
+/// Zero out up to 2MiB of a partition by writing 32 * 64KiB blocks
+/// Zero out up to 2MiB of a region by writing 32 * 64KiB blocks
+fn zero_partition_prefix<W: Write + Seek>(writer: &mut W, offset: u64, size: u64) -> io::Result<()> {
+    let to_zero = std::cmp::min(size, 2 * 1024 * 1024); // 2MiB max
+    zero_region(writer, offset, to_zero)
 }
 
 impl<'a> DiskWriter<'a> {
@@ -130,11 +146,13 @@ impl<'a> DiskWriter<'a> {
 
         let mut gpt_table = if self.planner.wipe_disk() {
             if writable {
-                // Zero out the first MiB to clear any old partition tables and boot sectors
-                zero_prefix_n(device, 0, 1_048_576)?;
+                // Zero out headers including potential ISO structures
+                zero_disk_headers(device)?;
 
+                // Convert total bytes to LBA sectors, subtract 1 as per GPT spec
+                let total_lba = self.device.size() / SECTOR_SIZE;
                 let mbr = mbr::ProtectiveMBR::with_lb_size(
-                    u32::try_from((self.device.size() / 512) - 1).unwrap_or(0xFF_FF_FF_FF),
+                    u32::try_from(total_lba.saturating_sub(1)).unwrap_or(0xFF_FF_FF_FF),
                 );
                 eprintln!("size is {}", self.device.size());
                 mbr.overwrite_lba0(device)?;
@@ -177,8 +195,10 @@ impl<'a> DiskWriter<'a> {
                     partition_id,
                     attributes,
                 } => {
-                    let start_lba = *start / 512;
-                    let size_lba = (*end - *start) / 512;
+                    // Convert byte offsets to LBA sectors
+                    let start_lba = *start / SECTOR_SIZE;
+                    let size_bytes = *end - *start;
+                    let size_lba = size_bytes / SECTOR_SIZE;
                     let (part_type, part_name) = match attributes.as_ref().and_then(|a| a.table.as_gpt()) {
                         Some(GptAttributes { type_guid, name, .. }) => {
                             (type_guid.clone(), name.clone().unwrap_or_default())
@@ -186,6 +206,13 @@ impl<'a> DiskWriter<'a> {
                         None => (partition_types::BASIC, "".to_string()),
                     };
 
+                    eprintln!(
+                        "Converting partition: bytes {}..{} to LBA {}..{}",
+                        start,
+                        end,
+                        start_lba,
+                        start_lba + size_lba
+                    );
                     let id =
                         gpt_table.add_partition_at(&part_name, *partition_id, start_lba, size_lba, part_type, 0)?;
                     println!("Added partition {}: {:?}", partition_id, id);
@@ -212,7 +239,7 @@ impl<'a> DiskWriter<'a> {
             original.sync_all()?;
 
             for (start, end) in zero_regions {
-                zero_prefix_n(original, start, end - start)?;
+                zero_partition_prefix(original, start, end - start)?;
             }
 
             blkpg::create_kernel_partitions(self.device.device())?;
