@@ -16,12 +16,12 @@ use types::{Filesystem, PartitionRole};
 use crate::{commands::Command, Constraints, StrategyDefinition};
 
 /// Provisioner
-pub struct Provisioner {
+pub struct Provisioner<'a> {
     /// Pool of devices
-    devices: Vec<BlockDevice>,
+    devices: Vec<&'a BlockDevice>,
 
     /// Strategy configurations
-    configs: HashMap<String, StrategyDefinition>,
+    configs: HashMap<String, &'a StrategyDefinition>,
 }
 
 /// Compiled plan
@@ -43,13 +43,13 @@ pub struct DevicePlan<'a> {
     pub strategy: Strategy,
 }
 
-impl Default for Provisioner {
+impl Default for Provisioner<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Provisioner {
+impl<'a> Provisioner<'a> {
     /// Create a new provisioner
     pub fn new() -> Self {
         debug!("Creating new provisioner");
@@ -60,19 +60,19 @@ impl Provisioner {
     }
 
     /// Add a strategy configuration
-    pub fn add_strategy(&mut self, config: StrategyDefinition) {
+    pub fn add_strategy(&mut self, config: &'a StrategyDefinition) {
         info!("Adding strategy: {}", config.name);
         self.configs.insert(config.name.clone(), config);
     }
 
     // Add a device to the provisioner pool
-    pub fn push_device(&mut self, device: BlockDevice) {
+    pub fn push_device(&mut self, device: &'a BlockDevice) {
         debug!("Adding device to pool: {:?}", device);
         self.devices.push(device)
     }
 
     // Build an inheritance chain for a strategy
-    fn strategy_parents<'a>(&'a self, strategy: &'a StrategyDefinition) -> Vec<&'a StrategyDefinition> {
+    fn strategy_parents<'b>(&'b self, strategy: &'b StrategyDefinition) -> Vec<&'b StrategyDefinition> {
         trace!("Building inheritance chain for strategy: {}", strategy.name);
         let mut chain = vec![];
         if let Some(parent) = &strategy.inherits {
@@ -96,11 +96,11 @@ impl Provisioner {
         plans
     }
 
-    fn create_plans_for_strategy<'a>(
-        &'a self,
-        strategy: &'a StrategyDefinition,
-        device_assignments: &mut HashMap<String, DevicePlan<'a>>,
-        plans: &mut Vec<Plan<'a>>,
+    fn create_plans_for_strategy<'b>(
+        &'b self,
+        strategy: &'b StrategyDefinition,
+        device_assignments: &mut HashMap<String, DevicePlan<'b>>,
+        plans: &mut Vec<Plan<'b>>,
     ) {
         trace!("Creating plans for strategy: {}", strategy.name);
         let chain = self.strategy_parents(strategy);
@@ -125,9 +125,9 @@ impl Provisioner {
                             _ => true,
                         })
                         .filter(|d| {
-                            !device_assignments
-                                .values()
-                                .any(|assigned| std::ptr::eq(assigned.device, *d))
+                            !device_assignments.values().any(|assigned| {
+                                std::ptr::eq(assigned.device as *const BlockDevice, **d as *const BlockDevice)
+                            })
                         })
                         .collect();
 
@@ -229,8 +229,8 @@ mod tests {
         let def = test_strategies.strategies;
         let device = BlockDevice::mock_device(MockDisk::new(150 * 1024 * 1024 * 1024));
         let mut provisioner = Provisioner::new();
-        provisioner.push_device(device);
-        for def in def {
+        provisioner.push_device(&device);
+        for def in def.iter() {
             provisioner.add_strategy(def);
         }
 
