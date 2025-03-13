@@ -6,7 +6,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use disks::BlockDevice;
-use log::{debug, info, trace, warn};
+use log::{debug, trace, warn};
 use partitioning::{
     planner::{Planner, PARTITION_ALIGNMENT},
     strategy::{AllocationStrategy, PartitionRequest, SizeRequirement, Strategy},
@@ -61,7 +61,7 @@ impl<'a> Provisioner<'a> {
 
     /// Add a strategy configuration
     pub fn add_strategy(&mut self, config: &'a StrategyDefinition) {
-        info!("Adding strategy: {}", config.name);
+        debug!("Adding strategy: {}", config.name);
         self.configs.insert(config.name.clone(), config);
     }
 
@@ -86,7 +86,7 @@ impl<'a> Provisioner<'a> {
 
     /// Attempt all strategies on the pool of devices
     pub fn plan(&self) -> Vec<Plan> {
-        info!("Planning device provisioning");
+        trace!("Planning device provisioning");
         let mut plans = Vec::new();
         for strategy in self.configs.values() {
             debug!("Attempting strategy: {}", strategy.name);
