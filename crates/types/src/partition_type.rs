@@ -8,14 +8,18 @@ use std::{fmt, str::FromStr};
 pub use gpt::partition_types::Type as GptPartitionType;
 pub use uuid::Uuid;
 
+#[cfg(feature = "kdl")]
 use crate::{get_kdl_entry, kdl_value_to_string, UnsupportedValue};
 
+#[cfg(feature = "kdl")]
 use super::FromKdlType;
 
+#[cfg(feature = "kdl")]
 pub enum PartitionTypeKDL {
     GUID,
 }
 
+#[cfg(feature = "kdl")]
 impl FromStr for PartitionTypeKDL {
     type Err = crate::Error;
 
@@ -27,6 +31,7 @@ impl FromStr for PartitionTypeKDL {
     }
 }
 
+#[cfg(feature = "kdl")]
 impl fmt::Display for PartitionTypeKDL {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -35,6 +40,7 @@ impl fmt::Display for PartitionTypeKDL {
     }
 }
 
+#[cfg(feature = "kdl")]
 impl<'a> FromKdlType<'a> for PartitionTypeKDL {
     fn from_kdl_type(id: &'a kdl::KdlEntry) -> Result<Self, crate::Error> {
         let ty_id = if let Some(ty) = id.ty() {
@@ -96,6 +102,7 @@ impl PartitionTypeGuid {
         }
     }
 
+    #[cfg(feature = "kdl")]
     pub fn from_kdl_node(node: &kdl::KdlNode) -> Result<Self, crate::Error> {
         let value = kdl_value_to_string(get_kdl_entry(node, &0)?)?;
         let v = value.parse().map_err(|_| crate::UnsupportedValue {

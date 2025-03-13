@@ -5,9 +5,10 @@
 
 use std::{fmt, str::FromStr};
 
-use crate::kdl_value_to_string;
-
+#[cfg(feature = "kdl")]
 use super::FromKdlProperty;
+#[cfg(feature = "kdl")]
+use crate::kdl_value_to_string;
 
 /// The type of partition table to create
 #[derive(Debug, PartialEq)]
@@ -41,6 +42,7 @@ impl FromStr for PartitionTableType {
     }
 }
 
+#[cfg(feature = "kdl")]
 impl FromKdlProperty<'_> for PartitionTableType {
     fn from_kdl_property(entry: &kdl::KdlEntry) -> Result<Self, crate::Error> {
         let value = kdl_value_to_string(entry)?;

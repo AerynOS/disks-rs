@@ -5,8 +5,10 @@
 
 use std::{fmt, str::FromStr};
 
+#[cfg(feature = "kdl")]
 use crate::{get_kdl_entry, kdl_value_to_integer, kdl_value_to_string};
 
+#[cfg(feature = "kdl")]
 use super::FromKdlProperty;
 
 /// The filesystem information for a partition
@@ -57,6 +59,7 @@ impl FromStr for StandardFilesystemType {
     }
 }
 
+#[cfg(feature = "kdl")]
 impl FromKdlProperty<'_> for StandardFilesystemType {
     fn from_kdl_property(entry: &kdl::KdlEntry) -> Result<Self, crate::Error> {
         let value = kdl_value_to_string(entry)?;
@@ -68,6 +71,7 @@ impl FromKdlProperty<'_> for StandardFilesystemType {
     }
 }
 
+#[cfg(feature = "kdl")]
 impl Filesystem {
     pub fn from_kdl_node(node: &kdl::KdlNode) -> Result<Self, crate::Error> {
         let mut fs_type = None;

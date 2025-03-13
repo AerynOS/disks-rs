@@ -5,8 +5,10 @@
 
 use std::{fmt, str::FromStr};
 
+#[cfg(feature = "kdl")]
 use crate::kdl_value_to_string;
 
+#[cfg(feature = "kdl")]
 use super::FromKdlProperty;
 
 /// The role assigned to a partition
@@ -68,6 +70,7 @@ impl FromStr for PartitionRole {
     }
 }
 
+#[cfg(feature = "kdl")]
 impl FromKdlProperty<'_> for PartitionRole {
     fn from_kdl_property(entry: &kdl::KdlEntry) -> Result<Self, crate::Error> {
         let value = kdl_value_to_string(entry)?;

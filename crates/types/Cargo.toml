@@ -4,8 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-kdl.workspace = true
+kdl = { workspace = true, optional = true }
 thiserror.workspace = true
-miette.workspace = true
+miette = { workspace = true, optional = true }
 gpt.workspace = true
 uuid.workspace = true
+
+[features]
+kdl = ["dep:kdl", "dep:miette"]

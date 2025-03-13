@@ -4,8 +4,10 @@
 
 use std::{fmt, str::FromStr};
 
+#[cfg(feature = "kdl")]
 use crate::UnsupportedValue;
 
+#[cfg(feature = "kdl")]
 use super::FromKdlType;
 
 /// Storage unit
@@ -73,6 +75,7 @@ impl FromStr for StorageUnit {
     }
 }
 
+#[cfg(feature = "kdl")]
 impl FromKdlType<'_> for StorageUnit {
     fn from_kdl_type(id: &kdl::KdlEntry) -> Result<Self, crate::Error> {
         let ty_id = if let Some(ty) = id.ty() {

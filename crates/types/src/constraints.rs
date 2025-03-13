@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
+#[cfg(feature = "kdl")]
 use crate::{get_kdl_entry, kdl_value_to_storage_size};
 
 /// Constraints for partition size, 1:1 mapping to SizeRequirements in
@@ -22,6 +23,7 @@ pub enum Constraints {
     Invalid,
 }
 
+#[cfg(feature = "kdl")]
 impl Constraints {
     pub fn from_kdl_node(node: &kdl::KdlNode) -> Result<Self, crate::Error> {
         let range = node
