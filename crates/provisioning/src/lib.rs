@@ -56,11 +56,11 @@ impl Parser {
             src: NamedSource::new(&name, Arc::new("".to_string())),
             diagnostics: vec![e.into()],
         })?;
-        Self::new(name.to_string(), txt)
+        Self::new(&name, &txt)
     }
 
     /// Create a new parser from a string
-    pub fn new(name: String, contents: String) -> Result<Self, ParseError> {
+    pub fn new(name: &str, contents: &str) -> Result<Self, ParseError> {
         let source = Arc::new(contents.to_string());
         let ns = NamedSource::new(name, source).with_language("KDL");
         let mut errors = vec![];

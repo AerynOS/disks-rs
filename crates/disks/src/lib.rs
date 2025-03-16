@@ -3,6 +3,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
 mod disk;
+mod sizing;
+pub use sizing::*;
+
 use std::{
     fs, io,
     path::{Path, PathBuf},

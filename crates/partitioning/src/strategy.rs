@@ -115,7 +115,7 @@ impl Strategy {
 
     /// Get a human readable description of this strategy
     pub fn describe(&self) -> String {
-        use crate::planner::format_size;
+        use disks::format_size;
 
         let mut desc = match &self.allocation {
             AllocationStrategy::InitializeWholeDisk => "Initialize new partition layout on entire disk".to_string(),
