@@ -31,14 +31,15 @@ fn load_provisioning(path: impl Into<PathBuf>) -> Result<Vec<StrategyDefinition>
 fn apply_partitioning(whence: &Path) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize provisioner and load strategies
     let mut prov = Provisioner::new();
-    for strategy in load_provisioning("crates/provisioning/tests/use_whole_disk.kdl")? {
+    let strategies = load_provisioning("crates/provisioning/tests/use_whole_disk.kdl")?;
+    for strategy in &strategies {
         prov.add_strategy(strategy);
     }
 
     // Set up block device
     let device = disks::loopback::Device::from_device_path(whence).ok_or("Not a loop device")?;
     let blk = BlockDevice::loopback_device(device);
-    prov.push_device(blk);
+    prov.push_device(&blk);
 
     // Generate and validate partitioning plans
     let plans = prov.plan();
