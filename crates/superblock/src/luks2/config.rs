@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashMap;
 
 /// Top-level LUKS2 configuration structure representing a LUKS2 encrypted device.
@@ -24,17 +23,16 @@ pub struct Luks2Config {
 }
 
 /// Core LUKS2 configuration data containing essential metadata about the encrypted device.
-#[serde_as]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Luks2ConfigData {
     /// Size of the JSON metadata area in bytes.
     /// This defines how much space is reserved for the LUKS2 header.
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "display_from_str")]
     pub json_size: u64,
 
     /// Size of the keyslots area in bytes.
     /// This defines the total space available for storing encrypted keys.
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "display_from_str")]
     pub keyslots_size: u64,
 
     /// Optional configuration flags that modify device behavior.
@@ -49,7 +47,6 @@ pub struct Luks2ConfigData {
 }
 
 /// Key derivation function (KDF) configuration used to generate encryption keys from passwords.
-#[serde_as]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Luks2Kdf {
     /// Type of KDF (e.g. pbkdf2, argon2i, argon2id)
@@ -99,7 +96,6 @@ pub struct Luks2Keyslot {
 }
 
 /// Configuration for keyslot storage area defining where encrypted keys are stored.
-#[serde_as]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Luks2KeyslotArea {
     /// Type of storage area, defining how the area is organized
@@ -107,11 +103,11 @@ pub struct Luks2KeyslotArea {
     pub area_type: String,
 
     /// Offset in bytes where this area begins on the device
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "display_from_str")]
     pub offset: u64,
 
     /// Size of this area in bytes
-    #[serde_as(as = "DisplayFromStr")]
+    #[serde(with = "display_from_str")]
     pub size: u64,
 
     /// Encryption algorithm used to protect stored key material
@@ -137,4 +133,28 @@ pub struct Luks2Segment {
     pub encryption: String,
     /// Sector size in bytes - the granularity of encryption
     pub sector_size: u64,
+}
+
+mod display_from_str {
+    use std::{fmt::Display, str::FromStr};
+
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub(super) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: Display,
+        S: Serializer,
+    {
+        serializer.serialize_str(&value.to_string())
+    }
+
+    pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        T: FromStr,
+        T::Err: Display,
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
 }
