@@ -307,9 +307,9 @@ checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.7.0"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51bafc0bb5cbecb9ed381e75b803040302fd678b5d9faa04f01eaa280bc8c029"
+checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
 
 [[package]]
 name = "log"
@@ -500,7 +500,7 @@ version = "0.1.0"
 dependencies = [
  "disks",
  "gpt",
- "linux-raw-sys 0.7.0",
+ "linux-raw-sys 0.9.4",
  "log",
  "nix",
  "test-log",
