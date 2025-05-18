@@ -7,7 +7,7 @@
 //! This module provides functionality to detect and read superblocks from different
 //! filesystem types including Btrfs, Ext4, F2FS, LUKS2, and XFS.
 
-use std::io::{self, BufReader, Cursor, Read, Seek};
+use std::io::{self, BufRead, Cursor, Read, Seek};
 
 use thiserror::Error;
 use zerocopy::FromBytes;
@@ -66,8 +66,7 @@ pub enum Error {
 }
 
 /// Attempts to detect a superblock of the given type from the reader
-pub fn detect_superblock<T: Detection, R: Read + Seek>(reader: &mut R) -> Result<Option<T>, Error> {
-    let mut reader = BufReader::new(reader);
+pub fn detect_superblock<T: Detection, R: BufRead + Seek>(reader: &mut R) -> Result<Option<T>, Error> {
     reader.seek(io::SeekFrom::Start(T::MAGIC_OFFSET))?;
     let mut magic_buf = vec![0u8; std::mem::size_of::<T::Magic>()];
     reader.read_exact(&mut magic_buf)?;
