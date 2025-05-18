@@ -7,7 +7,7 @@
 //! This module provides functionality to detect and read superblocks from different
 //! filesystem types including Btrfs, Ext4, F2FS, LUKS2, and XFS.
 
-use std::io::{self, BufReader, Cursor, Read, Seek};
+use std::io::{self, BufRead, Cursor, Read, Seek};
 
 use thiserror::Error;
 use zerocopy::FromBytes;
@@ -66,8 +66,7 @@ pub enum Error {
 }
 
 /// Attempts to detect a superblock of the given type from the reader
-pub fn detect_superblock<T: Detection, R: Read + Seek>(reader: &mut R) -> Result<Option<T>, Error> {
-    let mut reader = BufReader::new(reader);
+pub fn detect_superblock<T: Detection, R: BufRead + Seek>(reader: &mut R) -> Result<Option<T>, Error> {
     reader.seek(io::SeekFrom::Start(T::MAGIC_OFFSET))?;
     let mut magic_buf = vec![0u8; std::mem::size_of::<T::Magic>()];
     reader.read_exact(&mut magic_buf)?;
@@ -95,13 +94,13 @@ pub enum Kind {
     /// Ext4 filesystem
     Ext4,
     /// LUKS2 encrypted container
-    LUKS2,
+    Luks2,
     /// F2FS (Flash-Friendly File System)
     F2FS,
     /// XFS filesystem
-    XFS,
+    Xfs,
     /// FAT filesystem
-    FAT,
+    Fat,
 }
 
 impl std::fmt::Display for Kind {
@@ -109,10 +108,10 @@ impl std::fmt::Display for Kind {
         match &self {
             Kind::Btrfs => f.write_str("btrfs"),
             Kind::Ext4 => f.write_str("ext4"),
-            Kind::LUKS2 => f.write_str("luks2"),
+            Kind::Luks2 => f.write_str("luks2"),
             Kind::F2FS => f.write_str("f2fs"),
-            Kind::XFS => f.write_str("xfs"),
-            Kind::FAT => f.write_str("fat"),
+            Kind::Xfs => f.write_str("xfs"),
+            Kind::Fat => f.write_str("fat"),
         }
     }
 }
@@ -121,9 +120,9 @@ pub enum Superblock {
     Btrfs(Box<btrfs::Btrfs>),
     Ext4(Box<ext4::Ext4>),
     F2FS(Box<f2fs::F2FS>),
-    LUKS2(Box<luks2::Luks2>),
-    XFS(Box<xfs::XFS>),
-    FAT(Box<fat::Fat>),
+    Luks2(Box<luks2::Luks2>),
+    Xfs(Box<xfs::Xfs>),
+    Fat(Box<fat::Fat>),
 }
 
 impl Superblock {
@@ -133,9 +132,9 @@ impl Superblock {
             Superblock::Btrfs(_) => Kind::Btrfs,
             Superblock::Ext4(_) => Kind::Ext4,
             Superblock::F2FS(_) => Kind::F2FS,
-            Superblock::LUKS2(_) => Kind::LUKS2,
-            Superblock::XFS(_) => Kind::XFS,
-            Superblock::FAT(_) => Kind::FAT,
+            Superblock::Luks2(_) => Kind::Luks2,
+            Superblock::Xfs(_) => Kind::Xfs,
+            Superblock::Fat(_) => Kind::Fat,
         }
     }
 
@@ -145,9 +144,9 @@ impl Superblock {
             Superblock::Btrfs(block) => block.uuid(),
             Superblock::Ext4(block) => block.uuid(),
             Superblock::F2FS(block) => block.uuid(),
-            Superblock::LUKS2(block) => block.uuid(),
-            Superblock::XFS(block) => block.uuid(),
-            Superblock::FAT(block) => block.uuid(),
+            Superblock::Luks2(block) => block.uuid(),
+            Superblock::Xfs(block) => block.uuid(),
+            Superblock::Fat(block) => block.uuid(),
         }
     }
 
@@ -157,9 +156,9 @@ impl Superblock {
             Superblock::Btrfs(block) => block.label(),
             Superblock::Ext4(block) => block.label(),
             Superblock::F2FS(block) => block.label(),
-            Superblock::LUKS2(block) => block.label(),
-            Superblock::XFS(block) => block.label(),
-            Superblock::FAT(block) => block.label(),
+            Superblock::Luks2(block) => block.label(),
+            Superblock::Xfs(block) => block.label(),
+            Superblock::Fat(block) => block.label(),
         }
     }
 }
@@ -181,14 +180,14 @@ impl Superblock {
         if let Some(sb) = detect_superblock::<f2fs::F2FS, _>(&mut cursor)? {
             return Ok(Self::F2FS(Box::new(sb)));
         }
-        if let Some(sb) = detect_superblock::<xfs::XFS, _>(&mut cursor)? {
-            return Ok(Self::XFS(Box::new(sb)));
+        if let Some(sb) = detect_superblock::<xfs::Xfs, _>(&mut cursor)? {
+            return Ok(Self::Xfs(Box::new(sb)));
         }
         if let Some(sb) = detect_superblock::<luks2::Luks2, _>(&mut cursor)? {
-            return Ok(Self::LUKS2(Box::new(sb)));
+            return Ok(Self::Luks2(Box::new(sb)));
         }
         if let Some(sb) = detect_superblock::<fat::Fat, _>(&mut cursor)? {
-            return Ok(Self::FAT(Box::new(sb)));
+            return Ok(Self::Fat(Box::new(sb)));
         }
         Err(Error::UnknownSuperblock)
     }
@@ -239,10 +238,10 @@ mod tests {
                 "blsforme testing",
                 "d2c85810-4e75-4274-bc7d-a78267af7443",
             ),
-            ("luks+ext4", Kind::LUKS2, "", "be373cae-2bd1-4ad5-953f-3463b2e53e59"),
-            ("xfs", Kind::XFS, "BLSFORME", "45e8a3bf-8114-400f-95b0-380d0fb7d42d"),
-            ("fat16", Kind::FAT, "TESTLABEL", "A1B2-C3D4"),
-            ("fat32", Kind::FAT, "TESTLABEL", "A1B2-C3D4"),
+            ("luks+ext4", Kind::Luks2, "", "be373cae-2bd1-4ad5-953f-3463b2e53e59"),
+            ("xfs", Kind::Xfs, "BLSFORME", "45e8a3bf-8114-400f-95b0-380d0fb7d42d"),
+            ("fat16", Kind::Fat, "TESTLABEL", "A1B2-C3D4"),
+            ("fat32", Kind::Fat, "TESTLABEL", "A1B2-C3D4"),
         ];
 
         // Pre-allocate a buffer for determination tests
@@ -268,7 +267,7 @@ mod tests {
             assert_eq!(block.uuid().unwrap(), uuid);
 
             // Is it possible to get the JSON config out of LUKS2?
-            if let Superblock::LUKS2(block) = block {
+            if let Superblock::Luks2(block) = block {
                 let config = block.read_config(&mut cursor).expect("Cannot read LUKS2 config");
                 eprintln!("{}", serde_json::to_string_pretty(&config).unwrap());
                 assert!(config.config.json_size > 0);

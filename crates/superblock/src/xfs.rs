@@ -42,7 +42,7 @@ pub const MAX_LABEL_LEN: usize = 12;
 /// All multi-byte integer fields are stored in big-endian byte order.
 #[derive(FromBytes, Debug)]
 #[repr(C, align(8))]
-pub struct XFS {
+pub struct Xfs {
     /// Magic number, must contain 'XFSB'
     pub magicnum: U32<BigEndian>,
     /// Filesystem block size in bytes
@@ -164,7 +164,7 @@ pub struct XFS {
 /// XFS superblock magic number ('XFSB' in ASCII)
 pub const MAGIC: U32<BigEndian> = U32::new(0x58465342);
 
-impl XFS {
+impl Xfs {
     /// Returns the filesystem UUID as a properly formatted string
     pub fn uuid(&self) -> Result<String, super::Error> {
         Ok(Uuid::from_bytes(self.uuid).hyphenated().to_string())
@@ -176,14 +176,14 @@ impl XFS {
     }
 }
 
-impl Detection for XFS {
+impl Detection for Xfs {
     type Magic = U32<BigEndian>;
 
     const OFFSET: u64 = 0x0;
 
     const MAGIC_OFFSET: u64 = 0x0;
 
-    const SIZE: usize = std::mem::size_of::<XFS>();
+    const SIZE: usize = std::mem::size_of::<Xfs>();
 
     fn is_valid_magic(magic: &Self::Magic) -> bool {
         *magic == MAGIC
