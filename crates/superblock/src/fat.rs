@@ -10,8 +10,6 @@
 //! - Volume name and UUID
 //! - Encryption settings
 
-use std::io;
-
 use crate::{Detection, Error};
 use zerocopy::*;
 
@@ -57,7 +55,7 @@ pub struct Fat {
     pub shared: [u8; 54], // The size of the union fields in bytes
 }
 
-#[derive(FromBytes, Unaligned)]
+#[derive(FromBytes, Immutable, Unaligned)]
 #[repr(C, packed)]
 pub struct Fat16And32Fields {
     // Physical drive number
@@ -74,7 +72,7 @@ pub struct Fat16And32Fields {
     pub fs_type: [u8; 8],
 }
 
-#[derive(FromBytes, Unaligned)]
+#[derive(FromBytes, Immutable, Unaligned)]
 #[repr(C, packed)]
 pub struct Fat16Fields {
     pub common: Fat16And32Fields,
@@ -82,7 +80,7 @@ pub struct Fat16Fields {
 
 impl Fat16Fields {}
 
-#[derive(FromBytes, Unaligned)]
+#[derive(FromBytes, Immutable, Unaligned)]
 #[repr(C, packed)]
 pub struct Fat32Fields {
     // FAT32-specific fields
@@ -126,7 +124,7 @@ pub enum FatType {
 impl Fat {
     pub fn fat_type(&self) -> Result<FatType, Error> {
         // this is how the linux kernel does it in https://github.com/torvalds/linux/blob/master/fs/fat/inode.c
-        if self.fat_length == 0 && self.fat32()?.fat32_length != 0 {
+        if self.fat_length == 0 && self.fat32().fat32_length != 0 {
             Ok(FatType::Fat32)
         } else {
             Ok(FatType::Fat16)
@@ -136,28 +134,35 @@ impl Fat {
     /// Returns the filesystem id
     pub fn uuid(&self) -> Result<String, Error> {
         match self.fat_type()? {
-            FatType::Fat16 => vol_id(self.fat16()?.common.vol_id),
-            FatType::Fat32 => vol_id(self.fat32()?.common.vol_id),
+            FatType::Fat16 => vol_id(self.fat16().common.vol_id),
+            FatType::Fat32 => vol_id(self.fat32().common.vol_id),
         }
     }
 
     /// Returns the volume label
     pub fn label(&self) -> Result<String, Error> {
         match self.fat_type()? {
-            FatType::Fat16 => vol_label(&self.fat16()?.common.vol_label),
-            FatType::Fat32 => vol_label(&self.fat32()?.common.vol_label),
+            FatType::Fat16 => vol_label(&self.fat16().common.vol_label),
+            FatType::Fat32 => vol_label(&self.fat32().common.vol_label),
         }
     }
 
-    fn fat16(&self) -> Result<Fat16Fields, Error> {
-        Ok(Fat16Fields::read_from_bytes(&self.shared[..size_of::<Fat16Fields>()])
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Error Reading FAT16 Superblock"))?)
+    fn fat16(&self) -> &Fat16Fields {
+        let bytes: &[u8; size_of::<Fat16Fields>()] = first_n_bytes(&self.shared);
+        transmute_ref!(bytes)
     }
 
-    fn fat32(&self) -> Result<Fat32Fields, Error> {
-        Ok(Fat32Fields::read_from_bytes(&self.shared)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Error Reading FAT32 Superblock"))?)
+    fn fat32(&self) -> &Fat32Fields {
+        transmute_ref!(&self.shared)
     }
+}
+
+fn first_n_bytes<const N: usize, const M: usize>(arr: &[u8; M]) -> &[u8; N] {
+    const {
+        assert!(M >= N, "input array must be at least as large as output array");
+    }
+
+    <&[u8; N]>::try_from(&arr[..N]).unwrap()
 }
 
 fn vol_label(vol_label: &[u8; 11]) -> Result<String, Error> {
