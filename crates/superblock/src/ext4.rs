@@ -215,6 +215,6 @@ impl Ext4 {
 
     /// Return the volume label as valid utf8
     pub fn label(&self) -> Result<String, super::Error> {
-        Ok(std::str::from_utf8(&self.volume_name)?.into())
+        Ok(str::from_utf8(&self.volume_name)?.into())
     }
 }

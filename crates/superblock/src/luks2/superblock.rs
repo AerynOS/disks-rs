@@ -109,14 +109,14 @@ impl Luks2 {
     ///
     /// Note: LUKS2 stores string UUID rather than 128-bit sequence
     pub fn uuid(&self) -> Result<String, crate::Error> {
-        Ok(std::str::from_utf8(&self.uuid)?.trim_end_matches('\0').to_owned())
+        Ok(str::from_utf8(&self.uuid)?.trim_end_matches('\0').to_owned())
     }
 
     /// Get the label of the LUKS2 volume
     ///
     /// Note: Label is often empty, set in config instead
     pub fn label(&self) -> Result<String, crate::Error> {
-        Ok(std::str::from_utf8(&self.label)?.trim_end_matches('\0').to_owned())
+        Ok(str::from_utf8(&self.label)?.trim_end_matches('\0').to_owned())
     }
 
     /// Read and parse the JSON configuration areas from the LUKS2 header
@@ -135,7 +135,7 @@ impl Luks2 {
         reader.read_exact(&mut json_data)?;
 
         // clip the json_data at the first nul byte
-        let raw_input = std::str::from_utf8(&json_data)?.trim_end_matches('\0');
+        let raw_input = str::from_utf8(&json_data)?.trim_end_matches('\0');
         let config: Luks2Config = serde_json::from_str(raw_input)?;
         Ok(config)
     }
