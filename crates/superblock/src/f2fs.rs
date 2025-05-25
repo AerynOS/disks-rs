@@ -172,7 +172,7 @@ impl F2FS {
     /// Handles null termination and invalid UTF-16 sequences
     pub fn label(&self) -> Result<String, Error> {
         // Convert the array of U16<LittleEndian> to u16
-        let vol: Vec<u16> = self.volume_name.iter().map(|x| x.get()).collect();
+        let vol = self.volume_name.map(|x| x.get());
         let prelim_label = String::from_utf16(&vol)?;
         // Need valid grapheme step and skip (u16)\0 nul termination in fixed block size
         Ok(prelim_label.trim_end_matches('\0').to_owned())
