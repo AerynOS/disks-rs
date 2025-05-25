@@ -175,7 +175,7 @@ mod tests {
         };
 
         assert_eq!(fs.mkfs_command(), "mkfs.xfs");
-        assert_eq!(fs.uuid_arg(), vec!["-m".to_string(), format!("uuid={}", uuid)]);
+        assert_eq!(fs.uuid_arg(), vec!["-m".to_string(), format!("uuid={uuid}")]);
         assert_eq!(fs.label_arg(), vec!["-L", "data"]);
     }
 }

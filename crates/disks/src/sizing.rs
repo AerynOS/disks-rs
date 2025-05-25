@@ -29,7 +29,7 @@ pub fn format_size(size: u64) -> String {
     } else if size >= KB {
         format!("{:.1}KiB", size / KB)
     } else {
-        format!("{}B", size)
+        format!("{size}B")
     }
 }
 

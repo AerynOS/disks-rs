@@ -38,11 +38,11 @@ impl LoopDevice {
             return Err(io::Error::last_os_error());
         }
 
-        let path = format!("/dev/loop{}", devno);
-        debug!("Creating new loop device at {}", path);
+        let path = format!("/dev/loop{devno}");
+        debug!("Creating new loop device at {path}");
         let fd = OpenOptions::new().read(true).write(true).open(&path)?.into();
 
-        info!("Successfully initialized loop device {}", path);
+        info!("Successfully initialized loop device {path}");
         Ok(LoopDevice { fd, path })
     }
 
@@ -63,7 +63,7 @@ impl LoopDevice {
         let res = unsafe { libc::ioctl(our_fd, LOOP_SET_FD as _, file_fd) };
 
         if res < 0 {
-            error!("Failed to attach backing file {} - OS error", backing_file);
+            error!("Failed to attach backing file {backing_file} - OS error");
             return Err(io::Error::last_os_error());
         }
 
@@ -75,7 +75,7 @@ impl LoopDevice {
             return Err(io::Error::last_os_error());
         }
 
-        info!("Successfully attached backing file {} to loop device", backing_file);
+        info!("Successfully attached backing file {backing_file} to loop device");
         Ok(())
     }
 

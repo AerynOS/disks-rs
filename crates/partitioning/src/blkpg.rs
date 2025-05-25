@@ -63,10 +63,7 @@ pub(crate) fn add_partition<F>(fd: F, partition_number: i32, start: i64, length:
 where
     F: AsRawFd,
 {
-    debug!(
-        "Initiating partition addition - Number: {}, Start: {}, Length: {}",
-        partition_number, start, length
-    );
+    debug!("Initiating partition addition - Number: {partition_number}, Start: {start}, Length: {length}");
     let mut part = BlkpgPartition {
         start,
         length,
@@ -85,10 +82,10 @@ where
     let res = unsafe { libc::ioctl(fd.as_raw_fd(), BLKPG as _, &mut ioctl) };
     if res < 0 {
         let err = io::Error::last_os_error();
-        error!("Partition creation failed: {}", err);
+        error!("Partition creation failed: {err}");
         return Err(err);
     }
-    info!("Successfully created partition {}", partition_number);
+    info!("Successfully created partition {partition_number}");
     Ok(())
 }
 
@@ -104,7 +101,7 @@ pub(crate) fn delete_partition<F>(fd: F, partition_number: i32) -> io::Result<()
 where
     F: AsRawFd,
 {
-    info!("Initiating deletion of partition {}", partition_number);
+    info!("Initiating deletion of partition {partition_number}");
     let mut part = BlkpgPartition {
         start: 0,
         length: 0,
@@ -123,10 +120,10 @@ where
     let res = unsafe { libc::ioctl(fd.as_raw_fd(), BLKPG as _, &mut ioctl) };
     if res < 0 {
         let err = io::Error::last_os_error();
-        error!("Failed to delete partition {}: {}", partition_number, err);
+        error!("Failed to delete partition {partition_number}: {err}");
         return Err(err);
     }
-    info!("Successfully removed partition {}", partition_number);
+    info!("Successfully removed partition {partition_number}");
     Ok(())
 }
 

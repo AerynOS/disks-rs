@@ -67,7 +67,7 @@ impl<'a> Provisioner<'a> {
 
     // Add a device to the provisioner pool
     pub fn push_device(&mut self, device: &'a BlockDevice) {
-        debug!("Adding device to pool: {:?}", device);
+        debug!("Adding device to pool: {device:?}");
         self.devices.push(device)
     }
 
@@ -135,7 +135,7 @@ impl<'a> Provisioner<'a> {
 
                     // Branch for each matching device
                     for device in matching_devices {
-                        trace!("Creating plan branch for device: {:?}", device);
+                        trace!("Creating plan branch for device: {device:?}");
                         let mut new_assignments = device_assignments.clone();
                         new_assignments.insert(
                             command.name.clone(),
@@ -184,9 +184,9 @@ impl<'a> Provisioner<'a> {
 
         // OK lets now apply any mutations to the device assignments
         for (disk_name, device_plan) in device_assignments.iter_mut() {
-            debug!("Applying device plan for disk {}", disk_name);
+            debug!("Applying device plan for disk {disk_name}");
             if let Err(e) = device_plan.strategy.apply(&mut device_plan.planner) {
-                warn!("Failed to apply strategy for disk {}: {:?}", disk_name, e);
+                warn!("Failed to apply strategy for disk {disk_name}: {e:?}");
             }
             for region in device_plan.planner.current_layout().iter() {
                 if let Some(id) = region.partition_id {

@@ -39,7 +39,7 @@ impl MockDisk {
         let disk = BasicDisk {
             name: name.to_string(),
             sectors,
-            device: PathBuf::from(format!("/dev/{}", name)),
+            device: PathBuf::from(format!("/dev/{name}")),
             model: Some("Mock Device".to_string()),
             vendor: Some("Mock Vendor".to_string()),
             partitions: Vec::new(),
@@ -62,9 +62,9 @@ impl MockDisk {
             start,
             end,
             size: end - start,
-            name: format!("mock0p{}", partition_number),
+            name: format!("mock0p{partition_number}"),
             node: PathBuf::from("/sys/class/block/mock0/mock0p1"),
-            device: PathBuf::from(format!("/dev/mock0p{}", partition_number)),
+            device: PathBuf::from(format!("/dev/mock0p{partition_number}")),
         };
 
         self.basic_disk.partitions_mut().push(partition);

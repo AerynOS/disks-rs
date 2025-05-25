@@ -115,7 +115,7 @@ impl Filesystem {
                 if volume_id.is_some() {
                     return Err(crate::InvalidArguments {
                         at: node.span(),
-                        advice: Some(format!("volume_id is only supported for FAT32, not {}", fs_type)),
+                        advice: Some(format!("volume_id is only supported for FAT32, not {fs_type}")),
                     }
                     .into());
                 }
