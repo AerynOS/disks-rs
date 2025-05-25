@@ -53,7 +53,7 @@ pub struct Fat {
     pub total_sect: U32<LittleEndian>,
 
     // Shared memory region for FAT16 and FAT32
-    // Best way is to use a union with zerocopy, however that requires having to use `--cfg zerocopy_derive_union_into_bytes` https://github.com/google/zerocopy/issues/1792`
+    // Best way is to use a union with zerocopy, however that requires having to use `--cfg zerocopy_derive_union_into_bytes` https://github.com/google/zerocopy/issues/1792
     pub shared: [u8; 54], // The size of the union fields in bytes
 }
 
