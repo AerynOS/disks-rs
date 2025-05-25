@@ -25,7 +25,7 @@ where
         .truncate(true)
         .open(&path)?;
 
-    debug!("Setting file size to {} bytes", size);
+    debug!("Setting file size to {size} bytes");
     file.set_len(size)?;
 
     info!(

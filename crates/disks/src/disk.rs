@@ -75,11 +75,11 @@ impl fmt::Display for BasicDisk {
         write!(f, "{} ({:.2} GiB)", self.name(), gib)?;
 
         if let Some(vendor) = self.vendor() {
-            write!(f, " - {}", vendor)?;
+            write!(f, " - {vendor}")?;
         }
 
         if let Some(model) = self.model() {
-            write!(f, " {}", model)?;
+            write!(f, " {model}")?;
         }
 
         Ok(())
@@ -147,7 +147,7 @@ impl DiskInit for BasicDisk {
     fn from_sysfs_path(sysroot: &Path, name: &str) -> Option<Self> {
         let node = sysroot.join(SYSFS_DIR).join(name);
 
-        log::debug!("Initializing disk at sysfs path: {:?}", node);
+        log::debug!("Initializing disk at sysfs path: {node:?}");
 
         // Read the partitions of the disk if any
         let mut partitions: Vec<_> = fs::read_dir(&node)
@@ -161,16 +161,16 @@ impl DiskInit for BasicDisk {
         partitions.sort_by_key(|p| p.number);
 
         let sectors = sysfs::read(&node, "size").unwrap_or(0);
-        log::debug!("Read {} sectors for disk {}", sectors, name);
+        log::debug!("Read {sectors} sectors for disk {name}");
 
         let device = PathBuf::from("/dev").join(name);
-        log::debug!("Device path: {:?}", device);
+        log::debug!("Device path: {device:?}");
 
         let model = sysfs::read(&node, "device/model");
-        log::debug!("Model: {:?}", model);
+        log::debug!("Model: {model:?}");
 
         let vendor = sysfs::read(&node, "device/vendor");
-        log::debug!("Vendor: {:?}", vendor);
+        log::debug!("Vendor: {vendor:?}");
 
         Some(Self {
             name: name.to_owned(),

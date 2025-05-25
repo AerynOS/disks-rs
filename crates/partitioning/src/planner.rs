@@ -256,7 +256,7 @@ impl Planner {
                 attributes,
             } = change
             {
-                debug!("Adding partition {}..{} (ID: {})", start, end, partition_id);
+                debug!("Adding partition {start}..{end} (ID: {partition_id})");
                 layout.push(Region {
                     start: *start,
                     end: *end,
@@ -289,14 +289,14 @@ impl Planner {
         end: u64,
         attributes: Option<PartitionAttributes>,
     ) -> Result<(), PlanError> {
-        debug!("Planning to add partition {}..{}", start, end);
+        debug!("Planning to add partition {start}..{end}");
         debug!("Original size requested: {}", end - start);
 
         // Align start and end positions, capping to usable bounds
         let aligned_start = std::cmp::max(align_up(start, PARTITION_ALIGNMENT), self.usable_start);
         let aligned_end = std::cmp::min(align_down(end, PARTITION_ALIGNMENT), self.usable_end);
 
-        debug!("Aligned positions: {}..{}", aligned_start, aligned_end);
+        debug!("Aligned positions: {aligned_start}..{aligned_end}");
         debug!("Size after alignment: {}", aligned_end - aligned_start);
 
         // Validate input alignments
@@ -349,7 +349,7 @@ impl Planner {
         }
 
         let partition_id = self.allocate_partition_id();
-        debug!("Adding new partition with ID {} to change queue", partition_id);
+        debug!("Adding new partition with ID {partition_id} to change queue");
         self.changes.push_back(Change::AddPartition {
             start: aligned_start,
             end: aligned_end,
@@ -361,10 +361,10 @@ impl Planner {
 
     /// Plan to delete an existing partition
     pub fn plan_delete_partition(&mut self, index: usize) -> Result<(), PlanError> {
-        debug!("Planning to delete partition at index {}", index);
+        debug!("Planning to delete partition at index {index}");
 
         if index >= self.original_regions.len() {
-            warn!("Invalid partition index {}", index);
+            warn!("Invalid partition index {index}");
             return Err(PlanError::RegionOutOfBounds {
                 start: self.usable_start,
                 end: self.usable_size(),
@@ -378,7 +378,7 @@ impl Planner {
                 end: self.usable_size(),
             })?;
 
-        debug!("Adding deletion of partition ID {} to change queue", partition_id);
+        debug!("Adding deletion of partition ID {partition_id} to change queue");
         self.changes.push_back(Change::DeletePartition {
             original_index: index,
             partition_id,
@@ -389,7 +389,7 @@ impl Planner {
     /// Undo the most recent change
     pub fn undo(&mut self) -> bool {
         if let Some(change) = self.changes.pop_back() {
-            debug!("Undoing last change: {:?}", change);
+            debug!("Undoing last change: {change:?}");
             true
         } else {
             debug!("No changes to undo");

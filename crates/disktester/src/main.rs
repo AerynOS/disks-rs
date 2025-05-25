@@ -76,20 +76,20 @@ fn apply_partitioning(whence: &Path) -> Result<(), Box<dyn std::error::Error>> {
             Ok(output) => {
                 let stdout = std::str::from_utf8(&output.stdout).expect("Invalid UTF-8");
                 if output.status.success() {
-                    eprintln!("Format success: {}", stdout);
+                    eprintln!("Format success: {stdout}");
                 } else {
                     let stderr = std::str::from_utf8(&output.stderr).expect("Invalid UTF-8");
-                    eprintln!("Format error: {}", stderr);
+                    eprintln!("Format error: {stderr}");
                 }
-                eprintln!("Format output: {}", stdout);
+                eprintln!("Format output: {stdout}");
             }
             Err(e) => {
-                eprintln!("Format error: {}", e);
+                eprintln!("Format error: {e}");
             }
         }
     }
 
-    eprintln!("Format operations: {:?}", formatters);
+    eprintln!("Format operations: {formatters:?}");
 
     for (role, device) in plan.role_mounts.iter() {
         eprintln!("To mount: {:?} as {:?} (`{}`)", device, role, role.as_path());
@@ -110,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Apply partitioning and handle errors
     let whence = PathBuf::from(&l.path);
     if let Err(e) = apply_partitioning(&whence) {
-        eprintln!("Error applying partitioning: {}", e);
+        eprintln!("Error applying partitioning: {e}");
     }
 
     // Clean up loopback device
