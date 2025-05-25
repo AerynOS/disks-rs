@@ -78,8 +78,6 @@ pub struct Fat16Fields {
     pub common: Fat16And32Fields,
 }
 
-impl Fat16Fields {}
-
 #[derive(FromBytes, Immutable, Unaligned)]
 #[repr(C, packed)]
 pub struct Fat32Fields {
