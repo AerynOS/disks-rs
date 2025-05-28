@@ -10,7 +10,7 @@
 //! - Volume name and UUID
 //! - Encryption settings
 
-use crate::{Detection, Error};
+use crate::{Detection, UnicodeError};
 use zerocopy::*;
 
 /// Starting position of superblock in bytes
@@ -130,7 +130,7 @@ impl Fat {
     }
 
     /// Returns the filesystem id
-    pub fn uuid(&self) -> Result<String, Error> {
+    pub fn uuid(&self) -> Result<String, UnicodeError> {
         Ok(match self.fat_type() {
             FatType::Fat16 => vol_id(self.fat16().common.vol_id),
             FatType::Fat32 => vol_id(self.fat32().common.vol_id),
@@ -138,7 +138,7 @@ impl Fat {
     }
 
     /// Returns the volume label
-    pub fn label(&self) -> Result<String, Error> {
+    pub fn label(&self) -> Result<String, UnicodeError> {
         match self.fat_type() {
             FatType::Fat16 => vol_label(&self.fat16().common.vol_label),
             FatType::Fat32 => vol_label(&self.fat32().common.vol_label),
@@ -163,7 +163,7 @@ fn first_n_bytes<const N: usize, const M: usize>(arr: &[u8; M]) -> &[u8; N] {
     <&[u8; N]>::try_from(&arr[..N]).unwrap()
 }
 
-fn vol_label(vol_label: &[u8; 11]) -> Result<String, Error> {
+fn vol_label(vol_label: &[u8; 11]) -> Result<String, UnicodeError> {
     Ok(String::from_utf8_lossy(vol_label).trim_end_matches(' ').to_string())
 }
 

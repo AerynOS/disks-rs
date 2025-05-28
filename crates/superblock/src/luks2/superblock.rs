@@ -26,10 +26,11 @@ use std::{
     ops::Sub,
 };
 
-use crate::{Detection, Error};
+use snafu::ResultExt;
 use zerocopy::*;
 
-use super::Luks2Config;
+use super::{ConfigError, InvalidJsonSnafu, InvalidUtf8Snafu, IoSnafu, Luks2Config};
+use crate::{Detection, UnicodeError};
 
 /// Length of the magic number field in bytes
 pub const MAGIC_LEN: usize = 6;
@@ -108,14 +109,14 @@ impl Luks2 {
     /// Get the UUID of the LUKS2 volume
     ///
     /// Note: LUKS2 stores string UUID rather than 128-bit sequence
-    pub fn uuid(&self) -> Result<String, crate::Error> {
+    pub fn uuid(&self) -> Result<String, UnicodeError> {
         Ok(str::from_utf8(&self.uuid)?.trim_end_matches('\0').to_owned())
     }
 
     /// Get the label of the LUKS2 volume
     ///
     /// Note: Label is often empty, set in config instead
-    pub fn label(&self) -> Result<String, crate::Error> {
+    pub fn label(&self) -> Result<String, UnicodeError> {
         Ok(str::from_utf8(&self.label)?.trim_end_matches('\0').to_owned())
     }
 
@@ -128,15 +129,19 @@ impl Luks2 {
     /// # Returns
     ///
     /// Returns parsed Luks2Config on success, Error on failure
-    pub fn read_config<R: Read + Seek>(&self, reader: &mut R) -> Result<Luks2Config, Error> {
+    pub fn read_config<R: Read + Seek>(&self, reader: &mut R) -> Result<Luks2Config, ConfigError> {
         let mut json_data = vec![0u8; self.hdr_size.get().sub(4096) as usize];
         // Skip the header and read the JSON data
-        reader.seek(std::io::SeekFrom::Start(std::mem::size_of::<Luks2>() as u64))?;
-        reader.read_exact(&mut json_data)?;
+        reader
+            .seek(std::io::SeekFrom::Start(std::mem::size_of::<Luks2>() as u64))
+            .context(IoSnafu)?;
+        reader.read_exact(&mut json_data).context(IoSnafu)?;
 
         // clip the json_data at the first nul byte
-        let raw_input = str::from_utf8(&json_data)?.trim_end_matches('\0');
-        let config: Luks2Config = serde_json::from_str(raw_input)?;
+        let raw_input = str::from_utf8(&json_data)
+            .context(InvalidUtf8Snafu)?
+            .trim_end_matches('\0');
+        let config: Luks2Config = serde_json::from_str(raw_input).context(InvalidJsonSnafu)?;
         Ok(config)
     }
 }

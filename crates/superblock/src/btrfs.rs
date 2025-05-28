@@ -7,7 +7,7 @@
 //! This module provides functionality for reading and parsing BTRFS filesystem superblocks,
 //! which contain critical metadata about the filesystem including UUIDs and labels.
 
-use crate::{Detection, Error};
+use crate::{Detection, UnicodeError};
 use uuid::Uuid;
 use zerocopy::*;
 
@@ -117,12 +117,12 @@ impl Detection for Btrfs {
 
 impl Btrfs {
     /// Return the encoded UUID for this superblock as a string
-    pub fn uuid(&self) -> Result<String, Error> {
+    pub fn uuid(&self) -> Result<String, UnicodeError> {
         Ok(Uuid::from_bytes(self.fsid).hyphenated().to_string())
     }
 
     /// Return the volume label as a string
-    pub fn label(&self) -> Result<String, Error> {
+    pub fn label(&self) -> Result<String, UnicodeError> {
         Ok(str::from_utf8(&self.label)?.trim_end_matches('\0').to_owned())
     }
 }

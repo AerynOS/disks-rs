@@ -9,7 +9,7 @@
 
 use std::io::{self, BufRead, Cursor, Read, Seek};
 
-use thiserror::Error;
+use snafu::{ResultExt, Snafu};
 use zerocopy::FromBytes;
 
 pub mod btrfs;
@@ -38,35 +38,31 @@ pub trait Detection: Sized + FromBytes {
 }
 
 /// Errors that can occur when reading superblocks
-#[derive(Debug, Error)]
+#[derive(Debug, Snafu)]
 pub enum Error {
+    /// An I/O error occurred
+    #[snafu(display("io"))]
+    Io { source: io::Error },
+
     /// No known filesystem superblock was detected
-    #[error("unknown superblock")]
+    #[snafu(display("unknown superblock"))]
     UnknownSuperblock,
+}
 
-    /// Invalid JSON
-    #[error("invalid json")]
-    InvalidJson(#[from] serde_json::Error),
-
-    /// The requested feature is not implemented for this filesystem type
-    #[error("unsupported feature")]
-    UnsupportedFeature,
-
+/// Errors that can occur when decoding strings from FS metadata
+#[derive(Debug, Snafu)]
+pub enum UnicodeError {
     /// Error decoding UTF-8 string data
-    #[error("invalid utf8 in decode: {0}")]
-    Utf8Decoding(#[from] std::str::Utf8Error),
+    #[snafu(display("{source}"), context(false))]
+    InvalidUtf8 { source: std::str::Utf8Error },
 
     /// Error decoding UTF-16 string data
-    #[error("invalid utf16 in decode: {0}")]
-    Utf16Decoding(#[from] std::string::FromUtf16Error),
-
-    /// An I/O error occurred
-    #[error("io: {0}")]
-    IO(#[from] io::Error),
+    #[snafu(display("{source}"), context(false))]
+    InvalidUtf16 { source: std::string::FromUtf16Error },
 }
 
 /// Attempts to detect a superblock of the given type from the reader
-pub fn detect_superblock<T: Detection, R: BufRead + Seek>(reader: &mut R) -> Result<Option<T>, Error> {
+pub fn detect_superblock<T: Detection, R: BufRead + Seek>(reader: &mut R) -> io::Result<Option<T>> {
     reader.seek(io::SeekFrom::Start(T::MAGIC_OFFSET))?;
     let mut magic_buf = vec![0u8; std::mem::size_of::<T::Magic>()];
     reader.read_exact(&mut magic_buf)?;
@@ -139,7 +135,7 @@ impl Superblock {
     }
 
     /// Returns the filesystem UUID if available
-    pub fn uuid(&self) -> Result<String, Error> {
+    pub fn uuid(&self) -> Result<String, UnicodeError> {
         match self {
             Superblock::Btrfs(block) => block.uuid(),
             Superblock::Ext4(block) => block.uuid(),
@@ -151,7 +147,7 @@ impl Superblock {
     }
 
     /// Returns the volume label if available
-    pub fn label(&self) -> Result<String, Error> {
+    pub fn label(&self) -> Result<String, UnicodeError> {
         match self {
             Superblock::Btrfs(block) => block.label(),
             Superblock::Ext4(block) => block.label(),
@@ -170,25 +166,22 @@ impl Superblock {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
         let mut cursor = Cursor::new(bytes);
 
+        macro_rules! try_detect {
+            ($variant:ident, $ty:ty) => {
+                if let Some(sb) = detect_superblock::<$ty, _>(&mut cursor).context(IoSnafu)? {
+                    return Ok(Self::$variant(Box::new(sb)));
+                }
+            };
+        }
+
         // Try each filesystem type in order of likelihood
-        if let Some(sb) = detect_superblock::<ext4::Ext4, _>(&mut cursor)? {
-            return Ok(Self::Ext4(Box::new(sb)));
-        }
-        if let Some(sb) = detect_superblock::<btrfs::Btrfs, _>(&mut cursor)? {
-            return Ok(Self::Btrfs(Box::new(sb)));
-        }
-        if let Some(sb) = detect_superblock::<f2fs::F2FS, _>(&mut cursor)? {
-            return Ok(Self::F2FS(Box::new(sb)));
-        }
-        if let Some(sb) = detect_superblock::<xfs::Xfs, _>(&mut cursor)? {
-            return Ok(Self::Xfs(Box::new(sb)));
-        }
-        if let Some(sb) = detect_superblock::<luks2::Luks2, _>(&mut cursor)? {
-            return Ok(Self::Luks2(Box::new(sb)));
-        }
-        if let Some(sb) = detect_superblock::<fat::Fat, _>(&mut cursor)? {
-            return Ok(Self::Fat(Box::new(sb)));
-        }
+        try_detect!(Ext4, ext4::Ext4);
+        try_detect!(Btrfs, btrfs::Btrfs);
+        try_detect!(F2FS, f2fs::F2FS);
+        try_detect!(Xfs, xfs::Xfs);
+        try_detect!(Luks2, luks2::Luks2);
+        try_detect!(Fat, fat::Fat);
+
         Err(Error::UnknownSuperblock)
     }
 
@@ -199,8 +192,8 @@ impl Superblock {
     pub fn from_reader<R: Read + Seek>(reader: &mut R) -> Result<Self, Error> {
         // Preallocate a fixed buffer for the largest superblock we need to read
         let mut bytes = vec![0u8; 128 * 1024]; // 128KB covers all superblock offsets
-        reader.rewind()?;
-        reader.read_exact(&mut bytes)?;
+        reader.rewind().context(IoSnafu)?;
+        reader.read_exact(&mut bytes).context(IoSnafu)?;
 
         Self::from_bytes(&bytes)
     }

@@ -11,8 +11,28 @@
 //! like encryption parameters, key slots and segment information in JSON format.
 //!
 
+use std::io;
+
+use snafu::Snafu;
+
 mod config;
 mod superblock;
 
 pub use config::*;
 pub use superblock::*;
+
+/// Errors that can occur when parsing LUKS config
+#[derive(Debug, Snafu)]
+pub enum ConfigError {
+    /// An I/O error occurred
+    #[snafu(display("io"))]
+    Io { source: io::Error },
+
+    /// Invalid JSON
+    #[snafu(display("invalid json"))]
+    InvalidJson { source: serde_json::Error },
+
+    /// Error decoding UTF-8 string data
+    #[snafu(display("invalid utf8 in decode"))]
+    InvalidUtf8 { source: std::str::Utf8Error },
+}
