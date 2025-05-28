@@ -120,26 +120,26 @@ pub enum FatType {
 }
 
 impl Fat {
-    pub fn fat_type(&self) -> Result<FatType, Error> {
+    pub fn fat_type(&self) -> FatType {
         // this is how the linux kernel does it in https://github.com/torvalds/linux/blob/master/fs/fat/inode.c
         if self.fat_length == 0 && self.fat32().fat32_length != 0 {
-            Ok(FatType::Fat32)
+            FatType::Fat32
         } else {
-            Ok(FatType::Fat16)
+            FatType::Fat16
         }
     }
 
     /// Returns the filesystem id
     pub fn uuid(&self) -> Result<String, Error> {
-        match self.fat_type()? {
+        Ok(match self.fat_type() {
             FatType::Fat16 => vol_id(self.fat16().common.vol_id),
             FatType::Fat32 => vol_id(self.fat32().common.vol_id),
-        }
+        })
     }
 
     /// Returns the volume label
     pub fn label(&self) -> Result<String, Error> {
-        match self.fat_type()? {
+        match self.fat_type() {
             FatType::Fat16 => vol_label(&self.fat16().common.vol_label),
             FatType::Fat32 => vol_label(&self.fat32().common.vol_label),
         }
@@ -167,6 +167,6 @@ fn vol_label(vol_label: &[u8; 11]) -> Result<String, Error> {
     Ok(String::from_utf8_lossy(vol_label).trim_end_matches(' ').to_string())
 }
 
-fn vol_id(vol_id: U32<LittleEndian>) -> Result<String, Error> {
-    Ok(format!("{:04X}-{:04X}", vol_id >> 16, vol_id & 0xFFFF))
+fn vol_id(vol_id: U32<LittleEndian>) -> String {
+    format!("{:04X}-{:04X}", vol_id >> 16, vol_id & 0xFFFF)
 }
