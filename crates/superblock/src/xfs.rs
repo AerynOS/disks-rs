@@ -12,7 +12,7 @@
 //! - Quota tracking data
 //! - Log and realtime extent details
 
-use crate::Detection;
+use crate::{Detection, UnicodeError};
 use uuid::Uuid;
 use zerocopy::*;
 
@@ -166,12 +166,12 @@ pub const MAGIC: U32<BigEndian> = U32::new(0x58465342);
 
 impl Xfs {
     /// Returns the filesystem UUID as a properly formatted string
-    pub fn uuid(&self) -> Result<String, super::Error> {
+    pub fn uuid(&self) -> Result<String, UnicodeError> {
         Ok(Uuid::from_bytes(self.uuid).hyphenated().to_string())
     }
 
     /// Returns the volume label as a UTF-8 string, trimming any null termination
-    pub fn label(&self) -> Result<String, super::Error> {
+    pub fn label(&self) -> Result<String, UnicodeError> {
         Ok(str::from_utf8(&self.fname)?.trim_end_matches('\0').to_owned())
     }
 }

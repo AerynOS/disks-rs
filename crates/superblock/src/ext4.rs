@@ -8,7 +8,7 @@
 //! The superblock contains critical metadata about the filesystem including UUID, volume label,
 //! and various configuration parameters.
 
-use crate::{Detection, Error};
+use crate::{Detection, UnicodeError};
 use uuid::Uuid;
 use zerocopy::*;
 
@@ -209,12 +209,12 @@ impl Detection for Ext4 {
 
 impl Ext4 {
     /// Return the encoded UUID for this superblock
-    pub fn uuid(&self) -> Result<String, Error> {
+    pub fn uuid(&self) -> Result<String, UnicodeError> {
         Ok(Uuid::from_bytes(self.uuid).hyphenated().to_string())
     }
 
     /// Return the volume label as valid utf8
-    pub fn label(&self) -> Result<String, super::Error> {
+    pub fn label(&self) -> Result<String, UnicodeError> {
         Ok(str::from_utf8(&self.volume_name)?.into())
     }
 }

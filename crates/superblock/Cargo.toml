@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-thiserror.workspace = true
+snafu.workspace = true
 uuid = { workspace = true, features = ["v8"] }
 zerocopy = { workspace = true, features = ["derive", "std"] }
 

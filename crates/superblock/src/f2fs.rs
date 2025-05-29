@@ -13,7 +13,7 @@
 //! - Encryption settings
 //! - Device information
 
-use crate::{Detection, Error};
+use crate::{Detection, UnicodeError};
 use uuid::Uuid;
 use zerocopy::*;
 
@@ -163,14 +163,14 @@ pub const START_POSITION: u64 = 1024;
 
 impl F2FS {
     /// Returns the filesystem UUID as a hyphenated string
-    pub fn uuid(&self) -> Result<String, Error> {
+    pub fn uuid(&self) -> Result<String, UnicodeError> {
         Ok(Uuid::from_bytes(self.uuid).hyphenated().to_string())
     }
 
     /// Returns the volume label as a UTF-16 decoded string
     ///
     /// Handles null termination and invalid UTF-16 sequences
-    pub fn label(&self) -> Result<String, Error> {
+    pub fn label(&self) -> Result<String, UnicodeError> {
         // Convert the array of U16<LittleEndian> to u16
         let vol = self.volume_name.map(|x| x.get());
         let prelim_label = String::from_utf16(&vol)?;
