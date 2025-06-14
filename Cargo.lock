@@ -585,9 +585,7 @@ dependencies = [
  "partitioning",
  "phf",
  "test-log",
- "thiserror 2.0.12",
  "types",
- "uuid",
 ]
 
 [[package]]
