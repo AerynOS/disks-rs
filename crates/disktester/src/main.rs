@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use disks::BlockDevice;
-use partitioning::{blkpg, loopback, sparsefile, writer::DiskWriter, Formatter};
+use partitioning::{Formatter, blkpg, loopback, sparsefile, writer::DiskWriter};
 use provisioning::{Parser, Provisioner, StrategyDefinition};
 
 /// Loads provisioning strategies from a configuration file

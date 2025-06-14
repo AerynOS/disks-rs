@@ -8,12 +8,12 @@ use std::{collections::HashMap, path::PathBuf};
 use disks::BlockDevice;
 use log::{debug, trace, warn};
 use partitioning::{
-    planner::{Planner, PARTITION_ALIGNMENT},
+    planner::{PARTITION_ALIGNMENT, Planner},
     strategy::{AllocationStrategy, PartitionRequest, SizeRequirement, Strategy},
 };
 use types::{Filesystem, PartitionRole};
 
-use crate::{commands::Command, Constraints, StrategyDefinition};
+use crate::{Constraints, StrategyDefinition, commands::Command};
 
 /// Provisioner
 pub struct Provisioner<'a> {
