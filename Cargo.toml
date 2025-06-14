@@ -2,6 +2,9 @@
 resolver = "2"
 members = ["crates/*"]
 
+[workspace.package]
+rust-version = "1.85"
+
 [workspace.dependencies]
 gpt = "4.0.0"
 linux-raw-sys = "0.9.4"
