@@ -2,7 +2,7 @@
 name = "partitioning"
 version = "0.1.0"
 description = "A library for working directly with partitions"
-edition = "2021"
+edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
