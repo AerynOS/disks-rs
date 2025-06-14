@@ -15,6 +15,4 @@ miette = { workspace = true }
 itertools = { workspace = true }
 phf = { workspace = true, features = ["macros"] }
 test-log.workspace = true
-thiserror.workspace = true
 log.workspace = true
-uuid.workspace = true
