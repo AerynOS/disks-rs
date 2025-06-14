@@ -85,7 +85,7 @@ impl<'a> Provisioner<'a> {
     }
 
     /// Attempt all strategies on the pool of devices
-    pub fn plan(&self) -> Vec<Plan> {
+    pub fn plan(&self) -> Vec<Plan<'_>> {
         trace!("Planning device provisioning");
         let mut plans = Vec::new();
         for strategy in self.configs.values() {
