@@ -14,6 +14,5 @@ types = { path = "../types", features = ["kdl"] }
 kdl = { workspace = true, features = ["span"] }
 miette = { workspace = true }
 itertools = { workspace = true }
-phf = { workspace = true, features = ["macros"] }
 test-log.workspace = true
 log.workspace = true

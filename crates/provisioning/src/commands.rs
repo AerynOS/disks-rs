@@ -20,17 +20,19 @@ pub enum Command {
 /// Command execution function
 type CommandExec = for<'a> fn(Context<'a>) -> Result<Command, crate::Error>;
 
-/// Map of command names to functions
-static COMMANDS: phf::Map<&'static str, CommandExec> = phf::phf_map! {
-    "find-disk" => find_disk::parse,
-    "create-partition" => create_partition::parse,
-    "create-partition-table" => create_partition_table::parse,
-};
+fn command(name: &str) -> Option<CommandExec> {
+    Some(match name {
+        "find-disk" => find_disk::parse,
+        "create-partition" => create_partition::parse,
+        "create-partition-table" => create_partition_table::parse,
+        _ => return None,
+    })
+}
 
 /// Parse a command from a node if possible
 pub(crate) fn parse_command(context: Context<'_>) -> Result<Command, crate::Error> {
     let name = context.node.name().value();
-    let func = COMMANDS.get(name).ok_or_else(|| crate::UnsupportedNode {
+    let func = command(name).ok_or_else(|| crate::UnsupportedNode {
         at: context.node.span(),
         name: name.into(),
     })?;
