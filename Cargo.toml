@@ -8,7 +8,7 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 gpt = "4.0.0"
-linux-raw-sys = "0.9.4"
+linux-raw-sys = "0.11.0"
 itertools = "0.14.0"
 kdl = "6.3.3"
 log = "0.4.21"
