@@ -1,6 +1,6 @@
 # disks-rs 💽
 
-This project began life in the [blsforme](https://github.com/serpent-os/blsforme) project for Serpent OS.
+This project began life in the [blsforme](https://github.com/aerynos/blsforme) project for AerynOS.
 However as time went on it became clear we needed to extend the capabilities beyond simple topology scanning
 and superblocks to support the installer and other use cases.
 
@@ -16,7 +16,7 @@ management tools.
 With support, we will also provide the foundations for a Rust implementation of `libblkid`, while also providing
 an alternative to `libparted`.
 
-Per [issue 3](https://github.com/serpent-os/disks-rs/issues/3) we do eventually plan to extend the superblock support
+Per [issue 3](https://github.com/aerynos/disks-rs/issues/3) we do eventually plan to extend the superblock support
 to have in-tree capabilities for writing filesystems, but this is a long term goal. TLDR generation of complete filesystem
 images / rootfs without `euid = 0` requirements. If you want to make this happen faster, then read the next section. 😉
 
