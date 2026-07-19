@@ -19,6 +19,9 @@ pub trait FilesystemExt {
 
     /// Returns the force format argument if applicable
     fn force_arg(&self) -> Vec<String>;
+
+    /// Returns arguments pinning the exact filesystem variant if needed
+    fn variant_arg(&self) -> Vec<String>;
 }
 
 impl FilesystemExt for Filesystem {
@@ -97,6 +100,14 @@ impl FilesystemExt for Filesystem {
             },
         }
     }
+
+    fn variant_arg(&self) -> Vec<String> {
+        match self {
+            // Never let mkfs.fat auto-select FAT12/16
+            Filesystem::Fat32 { .. } => vec!["-F".to_string(), "32".to_string()],
+            Filesystem::Standard { .. } => vec![],
+        }
+    }
 }
 
 /// Struct for formatting filesystems on devices
@@ -125,6 +136,8 @@ impl Formatter {
 
         cmd.args(self.filesystem.uuid_arg());
         cmd.args(self.filesystem.label_arg());
+        cmd.args(self.filesystem.variant_arg());
+
         if self.force {
             cmd.args(self.filesystem.force_arg());
         }
