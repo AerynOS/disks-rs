@@ -103,7 +103,7 @@ impl FilesystemExt for Filesystem {
 
     fn variant_arg(&self) -> Vec<String> {
         match self {
-            // Never let mkfs.fat auto-select FAT12/16
+            // Strategy says fat32, don't let mkfs.fat downgrade to FAT12/16
             Filesystem::Fat32 { .. } => vec!["-F".to_string(), "32".to_string()],
             Filesystem::Standard { .. } => vec![],
         }

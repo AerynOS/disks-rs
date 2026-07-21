@@ -15,6 +15,8 @@ use super::FromKdlProperty;
 /// This is used to format the partition with a filesystem
 #[derive(Debug, Clone, PartialEq)]
 pub enum Filesystem {
+    /// Used for ESP/XBOOTLDR partitions where the
+    /// privisioning strategy requires FAT32 regardless of partition size.
     Fat32 {
         label: Option<String>,
         volume_id: Option<u32>,
