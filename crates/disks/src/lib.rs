@@ -182,7 +182,7 @@ impl BlockDevice {
     }
 }
 
-/// The addressable block size of tha whole disk device.
+/// The addressable block size of the whole disk device.
 ///
 /// Falls back to 512 when the attribute cannot be read, matching the kernel
 /// default for devices that do not report one.
