@@ -35,7 +35,12 @@ impl MockDisk {
     }
 
     pub fn new_with_name(name: &str, size_bytes: u64, parts_prefix: bool) -> Self {
-        let sectors = size_bytes / 512;
+        Self::new_with_block_size(name, size_bytes, parts_prefix, crate::SECTOR_SIZE)
+    }
+
+    pub fn new_with_block_size(name: &str, size_bytes: u64, parts_prefix: bool, logical_block_size: u64) -> Self {
+        // Sysfs counts in 512-byte units whatever the logical block size is
+        let sectors = size_bytes / crate::SECTOR_SIZE;
         let disk = BasicDisk {
             name: name.to_string(),
             sectors,
@@ -43,6 +48,7 @@ impl MockDisk {
             model: Some("Mock Device".to_string()),
             vendor: Some("Mock Vendor".to_string()),
             partitions: Vec::new(),
+            logical_block_size,
         };
 
         Self {
