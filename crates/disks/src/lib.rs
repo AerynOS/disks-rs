@@ -24,6 +24,7 @@ pub mod virt;
 
 const SYSFS_DIR: &str = "sys/class/block";
 const DEVFS_DIR: &str = "dev";
+pub const SECTOR_SIZE: u64 = 512;
 
 /// A block device on the system which can be either a physical disk or a partition.
 #[derive(Debug)]
@@ -53,7 +54,15 @@ impl BlockDevice {
 
     /// Returns the total size of the block device in bytes.
     pub fn size(&self) -> u64 {
-        self.sectors() * 512
+        self.sectors() * SECTOR_SIZE
+    }
+
+    /// Returns the addressable block size in bytes, 512 or 4096.
+    pub fn logical_block_size(&self) -> u64 {
+        match self {
+            BlockDevice::Disk(disk) => disk.logical_block_size(),
+            BlockDevice::Loopback(device) => device.disk().map_or(SECTOR_SIZE, |dev| dev.logical_block_size()),
+        }
     }
 
     /// Returns the partitions on the block device.
@@ -171,6 +180,18 @@ impl BlockDevice {
 
         Ok(devices)
     }
+}
+
+/// The addressable block size of tha whole disk device.
+///
+/// Falls back to 512 when the attribute cannot be read, matching the kernel
+/// default for devices that do not report one.
+pub fn logical_block_size_of(device: &Path) -> u64 {
+    let Some(name) = device.file_name() else {
+        return SECTOR_SIZE;
+    };
+
+    sysfs::read(&Path::new("/").join(SYSFS_DIR).join(name), "queue/logical_block_size").unwrap_or(SECTOR_SIZE)
 }
 
 #[cfg(test)]
