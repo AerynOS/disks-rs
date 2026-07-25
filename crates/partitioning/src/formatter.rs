@@ -32,6 +32,8 @@ impl FilesystemExt for Filesystem {
                 types::StandardFilesystemType::F2fs => "mkfs.f2fs",
                 types::StandardFilesystemType::Ext4 => "mkfs.ext4",
                 types::StandardFilesystemType::Xfs => "mkfs.xfs",
+                types::StandardFilesystemType::Btrfs => "mkfs.btrfs",
+                types::StandardFilesystemType::Bcachefs => "mkfs.bcachefs",
                 types::StandardFilesystemType::Swap => "mkswap",
             },
         }
@@ -54,6 +56,8 @@ impl FilesystemExt for Filesystem {
                         types::StandardFilesystemType::Ext4 => vec!["-U".to_string(), uuid.to_string()],
                         types::StandardFilesystemType::F2fs => vec!["-U".to_string(), uuid.to_string()],
                         types::StandardFilesystemType::Xfs => vec!["-m".to_string(), format!("uuid={}", uuid)],
+                        types::StandardFilesystemType::Btrfs => vec!["-U".to_string(), uuid.to_string()],
+                        types::StandardFilesystemType::Bcachefs => vec!["-U".to_string(), uuid.to_string()],
                         types::StandardFilesystemType::Swap => vec!["-U".to_string(), uuid.to_string()],
                     }
                 } else {
@@ -80,6 +84,8 @@ impl FilesystemExt for Filesystem {
                         types::StandardFilesystemType::Ext4 => vec!["-L".to_string(), label.to_string()],
                         types::StandardFilesystemType::F2fs => vec!["-l".to_string(), label.to_string()],
                         types::StandardFilesystemType::Xfs => vec!["-L".to_string(), label.to_string()],
+                        types::StandardFilesystemType::Btrfs => vec!["-L".to_string(), label.to_string()],
+                        types::StandardFilesystemType::Bcachefs => vec!["-L".to_string(), label.to_string()],
                         types::StandardFilesystemType::Swap => vec!["-L".to_string(), label.to_string()],
                     }
                 } else {
@@ -96,6 +102,8 @@ impl FilesystemExt for Filesystem {
                 types::StandardFilesystemType::F2fs => vec!["-f".to_string()],
                 types::StandardFilesystemType::Ext4 => vec!["-F".to_string()],
                 types::StandardFilesystemType::Xfs => vec!["-f".to_string()],
+                types::StandardFilesystemType::Btrfs => vec!["-f".to_string()],
+                types::StandardFilesystemType::Bcachefs => vec!["-f".to_string()],
                 types::StandardFilesystemType::Swap => vec!["-f".to_string()],
             },
         }
@@ -190,5 +198,35 @@ mod tests {
         assert_eq!(fs.mkfs_command(), "mkfs.xfs");
         assert_eq!(fs.uuid_arg(), vec!["-m".to_string(), format!("uuid={uuid}")]);
         assert_eq!(fs.label_arg(), vec!["-L", "data"]);
+    }
+
+    #[test]
+    fn test_btrfs_args() {
+        let uuid = Uuid::new_v4();
+        let fs = Filesystem::Standard {
+            filesystem_type: types::StandardFilesystemType::Btrfs,
+            label: Some("data".to_string()),
+            uuid: Some(uuid.to_string()),
+        };
+
+        assert_eq!(fs.mkfs_command(), "mkfs.btrfs");
+        assert_eq!(fs.uuid_arg(), vec!["-U".to_string(), uuid.to_string()]);
+        assert_eq!(fs.label_arg(), vec!["-L", "data"]);
+        assert_eq!(fs.force_arg(), vec!["-f"]);
+    }
+
+    #[test]
+    fn test_bcachefs_args() {
+        let uuid = Uuid::new_v4();
+        let fs = Filesystem::Standard {
+            filesystem_type: types::StandardFilesystemType::Bcachefs,
+            label: Some("home".to_string()),
+            uuid: Some(uuid.to_string()),
+        };
+
+        assert_eq!(fs.mkfs_command(), "mkfs.bcachefs");
+        assert_eq!(fs.uuid_arg(), vec!["-U".to_string(), uuid.to_string()]);
+        assert_eq!(fs.label_arg(), vec!["-L", "home"]);
+        assert_eq!(fs.force_arg(), vec!["-f"]);
     }
 }

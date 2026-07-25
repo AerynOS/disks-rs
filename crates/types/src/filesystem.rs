@@ -33,6 +33,8 @@ pub enum StandardFilesystemType {
     F2fs,
     Ext4,
     Xfs,
+    Btrfs,
+    Bcachefs,
     Swap,
 }
 
@@ -42,6 +44,8 @@ impl fmt::Display for StandardFilesystemType {
             Self::Ext4 => f.write_str("ext4"),
             Self::F2fs => f.write_str("f2fs"),
             Self::Xfs => f.write_str("xfs"),
+            Self::Btrfs => f.write_str("btrfs"),
+            Self::Bcachefs => f.write_str("bcachefs"),
             Self::Swap => f.write_str("swap"),
         }
     }
@@ -55,6 +59,8 @@ impl FromStr for StandardFilesystemType {
             "ext4" => Ok(Self::Ext4),
             "f2fs" => Ok(Self::F2fs),
             "xfs" => Ok(Self::Xfs),
+            "btrfs" => Ok(Self::Btrfs),
+            "bcachefs" => Ok(Self::Bcachefs),
             "swap" => Ok(Self::Swap),
             _ => Err(crate::Error::UnknownVariant),
         }
@@ -67,7 +73,7 @@ impl FromKdlProperty<'_> for StandardFilesystemType {
         let value = kdl_value_to_string(entry)?;
         let v = value.parse().map_err(|_| crate::UnsupportedValue {
             at: entry.span(),
-            advice: Some("'fat32', 'ext4', 'f2fs', 'xfs' 'swap' are supported".into()),
+            advice: Some("'fat32', 'ext4', 'f2fs', 'xfs', 'btrfs', 'bcachefs', 'swap' are supported".into()),
         })?;
         Ok(v)
     }
