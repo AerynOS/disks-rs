@@ -45,7 +45,7 @@ impl fmt::Display for StandardFilesystemType {
             Self::F2fs => f.write_str("f2fs"),
             Self::Xfs => f.write_str("xfs"),
             Self::Btrfs => f.write_str("btrfs"),
-            Self::Bcachefs => f.write_str("bachefs"),
+            Self::Bcachefs => f.write_str("bcachefs"),
             Self::Swap => f.write_str("swap"),
         }
     }
