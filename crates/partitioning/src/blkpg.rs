@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use disks::{BasicDisk, DiskInit};
+use gpt::{GptConfig, disk::LogicalBlockSize};
 use log::{debug, error, info};
 use std::{
     fs::File,
@@ -163,15 +164,18 @@ pub fn remove_kernel_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 ///
 /// # Returns
 /// `Result<(), Error>` indicating success or partition operation failure
-pub fn create_kernel_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+pub fn create_kernel_partitions<P: AsRef<Path>>(path: P, logical_block_size: u64) -> Result<(), Error> {
     info!("Creating kernel partitions from GPT for {:?}", path.as_ref());
     let file = File::open(&path)?;
 
     // Read GPT table
     debug!("Reading GPT partition table");
-    let gpt = gpt::GptConfig::new().writable(false).open(&path)?;
+    let gpt = GptConfig::new()
+        .writable(false)
+        .logical_block_size(LogicalBlockSize::try_from(logical_block_size)?)
+        .open(&path)?;
     let partitions = gpt.partitions();
-    let block_size = 512;
+    let block_size = logical_block_size as i64;
     info!("Located {} partitions (block size: {})", partitions.len(), block_size);
 
     // Add partitions from GPT
@@ -200,7 +204,7 @@ pub fn sync_gpt_partitions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     info!("Initiating GPT partition synchronization for {:?}", path.as_ref());
 
     remove_kernel_partitions(&path)?;
-    create_kernel_partitions(&path)?;
+    create_kernel_partitions(&path, disks::logical_block_size_of(path.as_ref()))?;
 
     info!("GPT partition synchronization completed successfully");
     Ok(())

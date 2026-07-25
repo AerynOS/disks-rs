@@ -3,20 +3,17 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::{
-    fs,
-    io::{self, Seek, Write},
-};
-
-use disks::BlockDevice;
-use gpt::{GptConfig, mbr, partition_types};
-use thiserror::Error;
-
 use crate::{
     GptAttributes, blkpg,
     planner::{Change, Planner},
 };
-const SECTOR_SIZE: u64 = 512;
+use disks::BlockDevice;
+use gpt::{GptConfig, disk::LogicalBlockSize, mbr, partition_types};
+use std::{
+    fs,
+    io::{self, Seek, Write},
+};
+use thiserror::Error;
 
 /// Errors that can occur when writing changes to disk
 #[derive(Debug, Error)]
@@ -24,22 +21,21 @@ pub enum WriteError {
     // A blkpg error
     #[error("error syncing partitions: {0}")]
     Blkpg(#[from] blkpg::Error),
-
     /// A partition ID was used multiple times
     #[error("Duplicate partition ID: {0}")]
     DuplicatePartitionId(u32),
-
     /// Error from GPT library
     #[error("GPT error: {0}")]
     Gpt(#[from] gpt::GptError),
-
     /// Error from MBR handling
     #[error("GPT error: {0}")]
     Mbr(#[from] gpt::mbr::MBRError),
-
     /// Underlying I/O error
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
+    /// The device reports a block size GPT cannot address
+    #[error("unsupported logical block size {0}, must be 512 or 4096")]
+    UnsupportedBlockSize(u64),
 }
 
 /// A writer that applies the layouts from the Planner to the disk.
@@ -143,31 +139,36 @@ impl<'a> DiskWriter<'a> {
 
         let mut zero_regions = vec![];
 
+        let block_size = self.device.logical_block_size();
+        let lb_size =
+            LogicalBlockSize::try_from(block_size).map_err(|_| WriteError::UnsupportedBlockSize(block_size))?;
         let mut gpt_table = if self.planner.wipe_disk() {
             if writable {
-                // Zero out headers including potential ISO structures
                 zero_disk_headers(device)?;
 
-                // Convert total bytes to LBA sectors, subtract 1 as per GPT spec
-                let total_lba = self.device.size() / SECTOR_SIZE;
+                // Convert total bytes to Logical Block Allocation sectors, subtract 1 as per GPT spec
+                let total_lba = self.device.size() / block_size;
                 let mbr = mbr::ProtectiveMBR::with_lb_size(
                     u32::try_from(total_lba.saturating_sub(1)).unwrap_or(0xFF_FF_FF_FF),
                 );
-                eprintln!("size is {}", self.device.size());
                 mbr.overwrite_lba0(device)?;
             }
 
-            let mut c = GptConfig::default()
+            let mut gpt_conf = GptConfig::default()
                 .writable(writable)
-                .logical_block_size(gpt::disk::LogicalBlockSize::Lb512)
+                .logical_block_size(lb_size)
                 .create_from_device(device, None)?;
 
             if writable {
-                c.write_inplace()?;
+                gpt_conf.write_inplace()?;
             }
-            c
+
+            gpt_conf
         } else {
-            GptConfig::default().writable(writable).open_from_device(device)?
+            GptConfig::default()
+                .writable(writable)
+                .logical_block_size(lb_size)
+                .open_from_device(device)?
         };
 
         let layout = self.planner.current_layout();
@@ -192,9 +193,9 @@ impl<'a> DiskWriter<'a> {
                     attributes,
                 } => {
                     // Convert byte offsets to LBA sectors
-                    let start_lba = *start / SECTOR_SIZE;
+                    let start_lba = *start / block_size;
                     let size_bytes = *end - *start;
-                    let size_lba = size_bytes / SECTOR_SIZE;
+                    let size_lba = size_bytes / block_size;
                     let (part_type, part_name) = match attributes.as_ref().and_then(|a| a.table.as_gpt()) {
                         Some(GptAttributes { type_guid, name, .. }) => {
                             (type_guid.clone(), name.clone().unwrap_or_default())
@@ -238,7 +239,7 @@ impl<'a> DiskWriter<'a> {
                 zero_partition_prefix(original, start, end - start)?;
             }
 
-            blkpg::create_kernel_partitions(self.device.device())?;
+            blkpg::create_kernel_partitions(self.device.device(), block_size)?;
         }
 
         Ok(())

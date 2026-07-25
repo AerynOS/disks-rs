@@ -3,14 +3,13 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use core::fmt;
-use std::fs;
 use std::{
+    fs,
     ops::Deref,
     path::{Path, PathBuf},
 };
 
-use crate::SYSFS_DIR;
-use crate::{mmc, mock, nvme, partition::Partition, scsi, sysfs, virt};
+use crate::{SECTOR_SIZE, SYSFS_DIR, mmc, mock, nvme, partition::Partition, scsi, sysfs, virt};
 
 /// Represents the type of disk device.
 #[derive(Debug)]
@@ -58,6 +57,8 @@ pub struct BasicDisk {
     pub(crate) vendor: Option<String>,
     /// Partitions
     pub(crate) partitions: Vec<Partition>,
+    /// Addressable block size in bytes, 512 or 4096
+    pub(crate) logical_block_size: u64,
 }
 
 impl fmt::Display for Disk {
@@ -114,7 +115,12 @@ impl BasicDisk {
 
     /// Returns the size of the disk in bytes.
     pub fn size(&self) -> u64 {
-        self.sectors() * 512
+        self.sectors() * SECTOR_SIZE
+    }
+
+    /// Returns the addressable block size in bytes.
+    pub fn logical_block_size(&self) -> u64 {
+        self.logical_block_size
     }
 
     /// Returns the model name of the disk.
@@ -172,6 +178,9 @@ impl DiskInit for BasicDisk {
         let vendor = sysfs::read(&node, "device/vendor");
         log::debug!("Vendor: {vendor:?}");
 
+        let logical_block_size = sysfs::read(&node, "queue/logical_block_size").unwrap_or(SECTOR_SIZE);
+        log::debug!("Logical block size: {logical_block_size}");
+
         Some(Self {
             name: name.to_owned(),
             sectors,
@@ -179,6 +188,7 @@ impl DiskInit for BasicDisk {
             model,
             vendor,
             partitions,
+            logical_block_size,
         })
     }
 }

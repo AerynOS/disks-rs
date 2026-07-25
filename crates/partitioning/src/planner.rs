@@ -175,7 +175,7 @@ impl Planner {
         let mut max_id = 0u32;
 
         for part in device.partitions() {
-            let mut region = Region::new(part.start, part.end);
+            let mut region = Region::new(part.start_bytes(), part.end_bytes());
             region.partition_id = Some(part.number);
             original_regions.push(region);
             original_partition_ids.push(part.number);
@@ -683,5 +683,21 @@ mod tests {
         let layout = planner.current_layout();
         assert_eq!(layout[0].partition_id, Some(1));
         assert_eq!(layout[1].partition_id, Some(2));
+    }
+
+    #[test]
+    fn test_existing_partitions_are_modelled_in_bytes() {
+        let mut disk = create_mock_disk();
+        disk.add_partition(0, 100 * MB);
+        disk.add_partition(100 * MB, 200 * MB);
+
+        let planner = Planner::new(&BlockDevice::mock_device(disk));
+        let layout = planner.current_layout();
+
+        assert_eq!(layout.len(), 2);
+        assert_eq!(layout[0].start, 0);
+        assert_eq!(layout[0].end, 100 * MB);
+        assert_eq!(layout[1].start, 100 * MB);
+        assert_eq!(layout[1].end, 200 * MB);
     }
 }

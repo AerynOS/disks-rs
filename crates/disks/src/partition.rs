@@ -2,10 +2,11 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-use std::fmt;
-use std::path::{Path, PathBuf};
-
-use crate::{DEVFS_DIR, SYSFS_DIR, sysfs};
+use crate::{DEVFS_DIR, SECTOR_SIZE, SYSFS_DIR, sysfs};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 
 /// Represents a partition on a disk device
 /// - Size in sectors
@@ -33,7 +34,7 @@ impl fmt::Display for Partition {
             f,
             "{name} {size:.2} GiB",
             name = self.name,
-            size = self.size as f64 * 512.0 / (1024.0 * 1024.0 * 1024.0)
+            size = self.size_bytes() as f64 / (1024.0 * 1024.0 * 1024.0)
         )
     }
 }
@@ -62,5 +63,20 @@ impl Partition {
             node,
             device: sysroot.join(DEVFS_DIR).join(name),
         })
+    }
+
+    /// Absolute start offset of the partition, in bytes
+    pub fn start_bytes(&self) -> u64 {
+        self.start * SECTOR_SIZE
+    }
+
+    /// Absolute end offset of the partition, in bytes
+    pub fn end_bytes(&self) -> u64 {
+        self.end * SECTOR_SIZE
+    }
+
+    /// Size of the partition, in bytes
+    pub fn size_bytes(&self) -> u64 {
+        self.size * SECTOR_SIZE
     }
 }
