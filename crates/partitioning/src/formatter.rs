@@ -113,7 +113,23 @@ impl FilesystemExt for Filesystem {
         match self {
             // Strategy says fat32, don't let mkfs.fat downgrade to FAT12/16
             Filesystem::Fat32 { .. } => vec!["-F".to_string(), "32".to_string()],
-            Filesystem::Standard { .. } => vec![],
+            Filesystem::Standard { filesystem_type, .. } => {
+                match filesystem_type {
+                    // XFS online self-repair: parent pointers so xfs_scrub can rebuild
+                    // directories, atomic exchange-range so it can swap in repaired
+                    // metadata, and autofsck=repair so the scheduled scrub fixes what it
+                    // finds. crc/rmapbt/reflink are already mkfs.xfs defaults.
+                    types::StandardFilesystemType::Xfs => vec![
+                        "-n".to_string(),
+                        "parent=1".to_string(),
+                        "-i".to_string(),
+                        "exchange=1".to_string(),
+                        "-m".to_string(),
+                        "autofsck=repair".to_string(),
+                    ],
+                    _ => vec![],
+                }
+            }
         }
     }
 }
@@ -184,6 +200,7 @@ mod tests {
         assert_eq!(fs.mkfs_command(), "mkfs.ext4");
         assert_eq!(fs.uuid_arg(), vec!["-U".to_string(), uuid.to_string()]);
         assert_eq!(fs.label_arg(), vec!["-L", "root"]);
+        assert!(fs.variant_arg().is_empty());
     }
 
     #[test]
@@ -198,6 +215,10 @@ mod tests {
         assert_eq!(fs.mkfs_command(), "mkfs.xfs");
         assert_eq!(fs.uuid_arg(), vec!["-m".to_string(), format!("uuid={uuid}")]);
         assert_eq!(fs.label_arg(), vec!["-L", "data"]);
+        assert_eq!(
+            fs.variant_arg(),
+            vec!["-n", "parent=1", "-i", "exchange=1", "-m", "autofsck=repair"]
+        );
     }
 
     #[test]
