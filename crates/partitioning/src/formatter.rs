@@ -222,6 +222,67 @@ mod tests {
     }
 
     #[test]
+    fn test_xfs_format_command_order() {
+        let uuid = Uuid::new_v4();
+        let fs = Filesystem::Standard {
+            filesystem_type: types::StandardFilesystemType::Xfs,
+            label: Some("ROOT".to_string()),
+            uuid: Some(uuid.to_string()),
+        };
+        let formatter = Formatter::new(fs).force();
+        let command = formatter.format(Path::new("/dev/test_device"));
+        let program = command.get_program().to_string_lossy();
+        let args: Vec<String> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect();
+
+        assert_eq!(program, "mkfs.xfs");
+        assert_eq!(
+            args,
+            vec![
+                "-m".to_string(),
+                format!("uuid={uuid}"),
+                "-L".to_string(),
+                "ROOT".to_string(),
+                "-n".to_string(),
+                "parent=1".to_string(),
+                "-i".to_string(),
+                "exchange=1".to_string(),
+                "-m".to_string(),
+                "autofsck=repair".to_string(),
+                "-f".to_string(),
+                "/dev/test_device".to_string(),
+            ]
+        );
+
+        // mkfs.xfs accepts multiple -m sections, but each key must appear only once
+        // within its own section. Verify uuid and autofsck weren't accidentally merged
+        // into the same -m argument list.
+        let mut seen_m_section = false;
+        let mut iter = args.iter();
+
+        while let Some(arg) = iter.next() {
+            if arg == "-m" {
+                let value = iter.next().expect("expected value after -m");
+                if seen_m_section {
+                    assert!(
+                        value.starts_with("autofsck="),
+                        "second -m section must only carry autofsck, got: {value}"
+                    );
+                } else {
+                    assert!(
+                        value.starts_with("uuid="),
+                        "first -m section must carry uuid, got: {value}"
+                    );
+                    seen_m_section = true;
+                }
+            }
+        }
+        assert!(seen_m_section, "expected at least one -m section");
+    }
+
+    #[test]
     fn test_btrfs_args() {
         let uuid = Uuid::new_v4();
         let fs = Filesystem::Standard {

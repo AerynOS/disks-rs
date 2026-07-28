@@ -142,7 +142,7 @@ pub struct Xfs {
     /// Compatible feature flags
     pub features_compat: U32<BigEndian>,
     /// Read-only compatible feature flags
-    pub features_ro_cmopat: U32<BigEndian>,
+    pub features_ro_compat: U32<BigEndian>,
     /// Incompatible feature flags
     pub features_incompat: U32<BigEndian>,
     /// Log incompatible feature flags
