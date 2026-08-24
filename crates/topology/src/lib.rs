@@ -12,7 +12,11 @@
 //! what it finds, and the crate is unable to produce kernel
 //! cmdline.
 
+mod errors;
 mod mounts;
+mod probe;
 
 // Re-exports
-pub mod mounts::*;
+pub use errors::*;
+pub use mounts::*;
+pub use probe::*;

@@ -931,6 +931,14 @@ dependencies = [
 [[package]]
 name = "topology"
 version = "0.1.0"
+dependencies = [
+ "disks",
+ "log",
+ "superblock",
+ "test-log",
+ "thiserror",
+ "types",
+]
 
 [[package]]
 name = "tracing"
